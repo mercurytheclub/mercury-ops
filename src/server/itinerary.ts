@@ -13,6 +13,7 @@ import "server-only";
 import {
   TOKEN,
   fetchAllPages,
+  tripFilter,
   makeCached,
   linkedIds,
   combineDateTime,
@@ -101,8 +102,8 @@ const contactOf = (name: unknown, phone: unknown): string | null => {
 const text = (v: unknown): string | null =>
   typeof v === "string" && v.trim() ? v.trim() : null;
 
-/** A category loader: all reservations across all trips, tagged with _tripRecordId. */
-type Loader = (guests: Map<string, string>) => Promise<Reservation[]>;
+/** A category loader: reservations for ONE trip (filtered server-side by Trip ID). */
+type Loader = (guests: Map<string, string>, tripCode: string) => Promise<Reservation[]>;
 
 // Booking rows often leave the denormalized name text blank, carrying only a
 // link to the master row. Resolve id → primary-field name so titles are never
@@ -160,8 +161,8 @@ type FlightRow = {
   };
 };
 
-const loadFlights: Loader = async (guests) => {
-  const rows = await fetchAllPages<FlightRow>("tblElrgipumvI2yna");
+const loadFlights: Loader = async (guests, tripCode) => {
+  const rows = await fetchAllPages<FlightRow>("tblElrgipumvI2yna", tripFilter(tripCode));
   const byKey = new Map<string, Reservation>();
   for (const row of rows) {
     const f = row.fields;
@@ -231,9 +232,9 @@ type HotelRow = {
   };
 };
 
-const loadHotels: Loader = async (guests) => {
+const loadHotels: Loader = async (guests, tripCode) => {
   const [rows, names] = await Promise.all([
-    fetchAllPages<HotelRow>("tblZeoVNQyq2wWUtV"),
+    fetchAllPages<HotelRow>("tblZeoVNQyq2wWUtV", tripFilter(tripCode)),
     loadHotelNames(),
   ]);
   const out: Reservation[] = [];
@@ -298,8 +299,8 @@ type VillaRow = {
   };
 };
 
-const loadVillas: Loader = async (guests) => {
-  const rows = await fetchAllPages<VillaRow>("tblNwLeS5fuj3qulQ");
+const loadVillas: Loader = async (guests, tripCode) => {
+  const rows = await fetchAllPages<VillaRow>("tblNwLeS5fuj3qulQ", tripFilter(tripCode));
   const out: Reservation[] = [];
   for (const row of rows) {
     const f = row.fields;
@@ -362,8 +363,8 @@ type CarRow = {
   };
 };
 
-const loadCars: Loader = async (guests) => {
-  const rows = await fetchAllPages<CarRow>("tblDLF5H4wuOmrAPq");
+const loadCars: Loader = async (guests, tripCode) => {
+  const rows = await fetchAllPages<CarRow>("tblDLF5H4wuOmrAPq", tripFilter(tripCode));
   const out: Reservation[] = [];
   for (const row of rows) {
     const f = row.fields;
@@ -417,9 +418,9 @@ type RestaurantRow = {
   };
 };
 
-const loadRestaurants: Loader = async (guests) => {
+const loadRestaurants: Loader = async (guests, tripCode) => {
   const [rows, names] = await Promise.all([
-    fetchAllPages<RestaurantRow>("tbl4o7RIr37vo8Uj5"),
+    fetchAllPages<RestaurantRow>("tbl4o7RIr37vo8Uj5", tripFilter(tripCode)),
     loadRestaurantNames(),
   ]);
   const out: Reservation[] = [];
@@ -479,9 +480,9 @@ type ActivityRow = {
   };
 };
 
-const loadActivities: Loader = async (guests) => {
+const loadActivities: Loader = async (guests, tripCode) => {
   const [rows, names] = await Promise.all([
-    fetchAllPages<ActivityRow>("tbli8AU5hA12ROjmi"),
+    fetchAllPages<ActivityRow>("tbli8AU5hA12ROjmi", tripFilter(tripCode)),
     loadActivityNames(),
   ]);
   const out: Reservation[] = [];
@@ -524,24 +525,24 @@ const CATEGORY_LOADERS: Loader[] = [
   loadActivities,
 ];
 
-// All reservations across all trips, cached behind one shell so a detail view
-// re-walks in-memory records instead of re-hitting Airtable.
-const loadAllReservations = makeCached(async (): Promise<Reservation[]> => {
+// Reservations for ONE trip. Each category is fetched server-side filtered to
+// the trip (a handful of rows, ~1 page each) and run in parallel, so this is a
+// small, fast fan-out — not a load of every booking across every trip.
+async function loadReservationsForTrip(
+  guests: Map<string, string>,
+  tripCode: string,
+): Promise<Reservation[]> {
   if (!TOKEN) return [];
-  const guests = await loadGuestsMap();
-  // Load every category in parallel — wall-clock is the slowest single table,
-  // not the sum. Airtable responses are cached in Vercel's Data Cache and
-  // fetchAirtablePage retries on 429, so the parallel burst is safe.
   const byCategory = await Promise.all(
     CATEGORY_LOADERS.map((load) =>
-      load(guests).catch((err) => {
+      load(guests, tripCode).catch((err) => {
         console.warn("category loader failed (skipped):", err);
         return [] as Reservation[];
       }),
     ),
   );
   return byCategory.flat();
-});
+}
 
 // ---------------------------------------------------------------------------
 // Day grouping
@@ -618,13 +619,9 @@ function buildItinerary(
 
 /** Full admin itinerary for one trip code (e.g. "TR00000001"), or undefined. */
 export async function loadItinerary(tripCode: string): Promise<ItineraryDetail | undefined> {
-  const [trips, guests, reservations] = await Promise.all([
-    loadTripRows(),
-    loadGuestsMap(),
-    loadAllReservations(),
-  ]);
+  const [trips, guests] = await Promise.all([loadTripRows(), loadGuestsMap()]);
   const trip = trips.find((t) => (t.fields["Trip ID"] ?? t.id) === tripCode);
   if (!trip) return undefined;
-  const mine = reservations.filter((r) => r._tripRecordId === trip.id);
-  return buildItinerary(trip, mine, guests);
+  const reservations = await loadReservationsForTrip(guests, tripCode);
+  return buildItinerary(trip, reservations, guests);
 }

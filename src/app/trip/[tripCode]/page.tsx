@@ -1,10 +1,12 @@
-import { loadItinerary, type Reservation } from "@/server/itinerary";
+import { loadItinerary } from "@/server/itinerary";
+import type { Reservation } from "@/server/itinerary";
 import { color } from "@brand";
 import { Wordmark } from "@/app/components/Wordmark";
 import { notFound } from "next/navigation";
 
-// ISR: render once, then serve the cached page instantly and revalidate in the
-// background. Opening (and re-opening) a trip is fast; edits surface within 60s.
+// On-demand ISR: a trip renders the first time it's opened, then is served from
+// cache and revalidated in the background every 60s. Each render only fetches
+// THIS trip's bookings (filtered server-side), so even a cold render is fast.
 export const revalidate = 60;
 
 const CATEGORY_LABEL: Record<Reservation["category"], string> = {

@@ -77,9 +77,14 @@ type AirtablePage<T> = { records: T[]; offset?: string };
 // this window without anyone waiting on a cold Airtable fan-out.
 const AIRTABLE_REVALIDATE_S = 60;
 
-async function fetchAirtablePage<T>(tableId: string, offset?: string): Promise<AirtablePage<T>> {
+async function fetchAirtablePage<T>(
+  tableId: string,
+  offset?: string,
+  filterByFormula?: string,
+): Promise<AirtablePage<T>> {
   const params = new URLSearchParams({ pageSize: "100" });
   if (offset) params.set("offset", offset);
+  if (filterByFormula) params.set("filterByFormula", filterByFormula);
   const url = `https://api.airtable.com/v0/${BASE_ID}/${tableId}?${params.toString()}`;
   // Cache each page in Vercel's Data Cache (shared across serverless
   // invocations) — this is what makes repeat loads fast. Retry on 429 since the
@@ -100,15 +105,20 @@ async function fetchAirtablePage<T>(tableId: string, offset?: string): Promise<A
   }
 }
 
-export async function fetchAllPages<T>(tableId: string): Promise<T[]> {
+export async function fetchAllPages<T>(tableId: string, filterByFormula?: string): Promise<T[]> {
   const all: T[] = [];
   let offset: string | undefined;
   do {
-    const page = await fetchAirtablePage<T>(tableId, offset);
+    const page = await fetchAirtablePage<T>(tableId, offset, filterByFormula);
     all.push(...page.records);
     offset = page.offset;
   } while (offset);
   return all;
+}
+
+/** Airtable filter scoping a booking table to one trip via its linked Trip ID. */
+export function tripFilter(tripCode: string): string {
+  return `ARRAYJOIN({Trip ID})="${tripCode}"`;
 }
 
 // Airtable returns linked-record fields as bare arrays of record IDs.
