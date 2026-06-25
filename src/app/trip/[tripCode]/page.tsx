@@ -113,11 +113,14 @@ export default async function TripPage({ params }: { params: Promise<{ tripCode:
 
   return (
     <main style={{ minHeight: "100vh", padding: "6vh 6vw", display: "flex", flexDirection: "column", gap: "2rem", maxWidth: 920, margin: "0 auto" }}>
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.4rem" }}>
-        <a href="/" aria-label="Back to all trips" style={{ display: "flex", justifyContent: "center" }}>
+      {/* Nav bar: 3 columns so the back action (left) and centered logo never
+          overlap — the empty right column balances the grid to keep it centered. */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", gap: "1rem" }}>
+        <a href="/" className="label" style={{ justifySelf: "start", opacity: 0.6, whiteSpace: "nowrap" }}>← all trips</a>
+        <a href="/" aria-label="Back to all trips" style={{ display: "flex", justifySelf: "center" }}>
           <Wordmark size={30} />
         </a>
-        <a href="/" className="label" style={{ opacity: 0.5 }}>← all trips</a>
+        <span aria-hidden />
       </div>
       <header style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
         <h1 style={{ margin: 0, fontSize: "2rem", fontWeight: 400 }}>{it.name}</h1>

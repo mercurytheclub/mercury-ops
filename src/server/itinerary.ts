@@ -1,4 +1,5 @@
 import "server-only";
+import { unstable_cache } from "next/cache";
 
 // Per-trip itinerary for the OPS (admin) app. Unlike the guest-facing consumer
 // app, this surfaces internal fields — cost lines, supplier + contact, record
@@ -111,15 +112,22 @@ type Loader = (guests: Map<string, string>, tripCode: string) => Promise<Reserva
 // generic ("Hotel"). One cached map per master table.
 type NameRow = { id: string; fields: Record<string, unknown> };
 function nameMapLoader(tableId: string, primaryField: string) {
-  return makeCached(async () => {
-    const map = new Map<string, string>();
-    if (!TOKEN) return map;
-    for (const row of await fetchAllPages<NameRow>(tableId, undefined, MASTER_REVALIDATE_S)) {
-      const name = row.fields[primaryField];
-      if (typeof name === "string" && name.trim()) map.set(row.id, name.trim());
-    }
-    return map;
-  });
+  // Cache the assembled id→name entries (serializable) for an hour — masters
+  // change rarely. Pagination inside runs uncached so offsets stay valid.
+  const fetchEntries = unstable_cache(
+    async (): Promise<[string, string][]> => {
+      if (!TOKEN) return [];
+      const entries: [string, string][] = [];
+      for (const row of await fetchAllPages<NameRow>(tableId)) {
+        const name = row.fields[primaryField];
+        if (typeof name === "string" && name.trim()) entries.push([row.id, name.trim()]);
+      }
+      return entries;
+    },
+    [`mercury-master-${tableId}`],
+    { revalidate: MASTER_REVALIDATE_S },
+  );
+  return makeCached(async () => new Map(await fetchEntries()));
 }
 
 const loadHotelNames = nameMapLoader("tblPnBimrs9eLjooQ", "Hotel Name");

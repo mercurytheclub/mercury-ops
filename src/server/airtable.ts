@@ -1,4 +1,5 @@
 import "server-only";
+import { unstable_cache } from "next/cache";
 
 // Server-only Airtable client for mercury-ops.
 //
@@ -72,29 +73,25 @@ export function makeCached<T>(
 
 type AirtablePage<T> = { records: T[]; offset?: string };
 
-// How long an Airtable page stays cached in Vercel's Data Cache. Served stale
-// instantly while it revalidates in the background, so ops edits surface within
-// this window without anyone waiting on a cold Airtable fan-out.
+// Revalidate windows for the cached ASSEMBLED results (see unstable_cache below).
 const AIRTABLE_REVALIDATE_S = 60;
 
 async function fetchAirtablePage<T>(
   tableId: string,
   offset?: string,
   filterByFormula?: string,
-  revalidateS: number = AIRTABLE_REVALIDATE_S,
 ): Promise<AirtablePage<T>> {
   const params = new URLSearchParams({ pageSize: "100" });
   if (offset) params.set("offset", offset);
   if (filterByFormula) params.set("filterByFormula", filterByFormula);
   const url = `https://api.airtable.com/v0/${BASE_ID}/${tableId}?${params.toString()}`;
-  // Cache each page in Vercel's Data Cache (shared across serverless
-  // invocations) — this is what makes repeat loads fast. Retry on 429 since the
-  // booking tables now load in parallel (see itinerary.ts).
+  // NOT cached: Airtable's pagination offset tokens are short-lived, so caching a
+  // page response would hand back a stale offset and break the next-page fetch
+  // (422 LIST_RECORDS_ITERATOR_NOT_AVAILABLE). Cross-request speed comes from
+  // caching the ASSEMBLED results (unstable_cache) and the rendered page (ISR) —
+  // never these paginated requests. Retry on 429 (booking tables load in parallel).
   for (let attempt = 0; ; attempt++) {
-    const res = await fetch(url, {
-      headers: { Authorization: `Bearer ${TOKEN}` },
-      next: { revalidate: revalidateS },
-    });
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${TOKEN}` } });
     if (res.status === 429 && attempt < 4) {
       await new Promise((r) => setTimeout(r, 300 * (attempt + 1)));
       continue;
@@ -106,19 +103,18 @@ async function fetchAirtablePage<T>(
   }
 }
 
-// Catalog/master tables (hotels, restaurants, activities) change rarely — cache
-// them an hour so a cold trip render almost never waits on a full master reload.
+// Catalog/master tables (hotels, restaurants, activities) change rarely — their
+// assembled name maps are cached an hour (see nameMapLoader in itinerary.ts).
 export const MASTER_REVALIDATE_S = 3600;
 
 export async function fetchAllPages<T>(
   tableId: string,
   filterByFormula?: string,
-  revalidateS?: number,
 ): Promise<T[]> {
   const all: T[] = [];
   let offset: string | undefined;
   do {
-    const page = await fetchAirtablePage<T>(tableId, offset, filterByFormula, revalidateS);
+    const page = await fetchAirtablePage<T>(tableId, offset, filterByFormula);
     all.push(...page.records);
     offset = page.offset;
   } while (offset);
@@ -177,13 +173,18 @@ type GuestsAirtableRow = {
   fields: { "Full Name"?: string };
 };
 
-export const loadGuestsMap = makeCached(async () => {
-  const map = new Map<string, string>();
-  if (!TOKEN) return map;
-  const rows = await fetchAllPages<GuestsAirtableRow>(GUESTS_TABLE_ID);
-  for (const row of rows) map.set(row.id, row.fields["Full Name"] ?? "");
-  return map;
-});
+// Cache the assembled guest entries (serializable) — NOT the paginated pages.
+const loadGuestEntries = unstable_cache(
+  async (): Promise<[string, string][]> => {
+    if (!TOKEN) return [];
+    const rows = await fetchAllPages<GuestsAirtableRow>(GUESTS_TABLE_ID);
+    return rows.map((r) => [r.id, r.fields["Full Name"] ?? ""] as [string, string]);
+  },
+  ["mercury-guests"],
+  { revalidate: AIRTABLE_REVALIDATE_S },
+);
+
+export const loadGuestsMap = makeCached(async () => new Map(await loadGuestEntries()));
 
 /** Resolve a Lead Guest + Companions/Guest set of linked-record fields to names. */
 export function resolveGuestNames(
@@ -221,14 +222,20 @@ export type TripAirtableRow = {
   };
 };
 
-/** Raw Trip rows, cached. Shared by the list loader and the itinerary builder. */
-export const loadTripRows = makeCached(async (): Promise<TripAirtableRow[]> => {
-  if (!TOKEN) {
-    console.warn("AIRTABLE_TOKEN not set — trips unavailable (set it in .env.local)");
-    return [];
-  }
-  return fetchAllPages<TripAirtableRow>(TRIPS_TABLE_ID);
-});
+/** Raw Trip rows. Assembled array cached (serializable); pagination stays fresh. */
+const loadTripRowsCached = unstable_cache(
+  async (): Promise<TripAirtableRow[]> => {
+    if (!TOKEN) {
+      console.warn("AIRTABLE_TOKEN not set — trips unavailable (set it in .env.local)");
+      return [];
+    }
+    return fetchAllPages<TripAirtableRow>(TRIPS_TABLE_ID);
+  },
+  ["mercury-trips"],
+  { revalidate: AIRTABLE_REVALIDATE_S },
+);
+
+export const loadTripRows = makeCached(loadTripRowsCached);
 
 /** Lean trip summary for the ops list. Full reservation hydration comes later. */
 export type OpsTrip = {
