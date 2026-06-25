@@ -81,6 +81,7 @@ async function fetchAirtablePage<T>(
   tableId: string,
   offset?: string,
   filterByFormula?: string,
+  revalidateS: number = AIRTABLE_REVALIDATE_S,
 ): Promise<AirtablePage<T>> {
   const params = new URLSearchParams({ pageSize: "100" });
   if (offset) params.set("offset", offset);
@@ -92,7 +93,7 @@ async function fetchAirtablePage<T>(
   for (let attempt = 0; ; attempt++) {
     const res = await fetch(url, {
       headers: { Authorization: `Bearer ${TOKEN}` },
-      next: { revalidate: AIRTABLE_REVALIDATE_S },
+      next: { revalidate: revalidateS },
     });
     if (res.status === 429 && attempt < 4) {
       await new Promise((r) => setTimeout(r, 300 * (attempt + 1)));
@@ -105,11 +106,19 @@ async function fetchAirtablePage<T>(
   }
 }
 
-export async function fetchAllPages<T>(tableId: string, filterByFormula?: string): Promise<T[]> {
+// Catalog/master tables (hotels, restaurants, activities) change rarely — cache
+// them an hour so a cold trip render almost never waits on a full master reload.
+export const MASTER_REVALIDATE_S = 3600;
+
+export async function fetchAllPages<T>(
+  tableId: string,
+  filterByFormula?: string,
+  revalidateS?: number,
+): Promise<T[]> {
   const all: T[] = [];
   let offset: string | undefined;
   do {
-    const page = await fetchAirtablePage<T>(tableId, offset, filterByFormula);
+    const page = await fetchAirtablePage<T>(tableId, offset, filterByFormula, revalidateS);
     all.push(...page.records);
     offset = page.offset;
   } while (offset);

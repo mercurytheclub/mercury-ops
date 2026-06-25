@@ -14,6 +14,7 @@ import {
   TOKEN,
   fetchAllPages,
   tripFilter,
+  MASTER_REVALIDATE_S,
   makeCached,
   linkedIds,
   combineDateTime,
@@ -113,7 +114,7 @@ function nameMapLoader(tableId: string, primaryField: string) {
   return makeCached(async () => {
     const map = new Map<string, string>();
     if (!TOKEN) return map;
-    for (const row of await fetchAllPages<NameRow>(tableId)) {
+    for (const row of await fetchAllPages<NameRow>(tableId, undefined, MASTER_REVALIDATE_S)) {
       const name = row.fields[primaryField];
       if (typeof name === "string" && name.trim()) map.set(row.id, name.trim());
     }
