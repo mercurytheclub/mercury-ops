@@ -3,7 +3,7 @@ import { inconsolata, atkinson } from "./fonts";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "mercury ops",
+  title: "Mercury | Ops",
   description: "concierge travel — ops command center",
 };
 
