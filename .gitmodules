@@ -1,0 +1,3 @@
+[submodule "vendor/brand"]
+	path = vendor/brand
+	url = ../mercury-brand

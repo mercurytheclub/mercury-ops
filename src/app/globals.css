@@ -1,0 +1,28 @@
+/* Brand tokens (single source of truth) — defines --mercury-* custom properties. */
+@import "../../vendor/brand/tokens.css";
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--mercury-black);
+  color: var(--mercury-white);
+  /* next/font local sets --font-body / --font-mono on <html> */
+  font-family: var(--font-body), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: var(--mercury-blue); text-decoration: none; }
+
+/* hairlines, not borders */
+.hairline { border: 0; border-top: 1px solid var(--mercury-rule); }
+
+/* mono micro-label — FLIGHT, HOTEL, etc. Lowercase wordmark is the exception. */
+.label {
+  font-family: var(--font-mono), monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.72rem;
+  color: var(--mercury-white);
+}
