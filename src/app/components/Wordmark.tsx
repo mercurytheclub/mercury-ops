@@ -1,31 +1,28 @@
-import { brand, color } from "@brand";
+import { color } from "@brand";
 
-// Matches the mobile app's masthead wordmark (app/app/index.tsx): MERCURY in
-// uppercase Inconsolata with wide letter-spacing, white at 90%. The cyan "ops"
-// suffix marks this as the ops surface.
-export function Wordmark({ size = 15 }: { size?: number }) {
+// The official Mercury wordmark from mercurytheclub.com (vendored at
+// public/mercury-logo-white.svg), paired with the cyan "ops" tag that marks
+// this as the ops surface. `size` is the logo height in px.
+export function Wordmark({ size = 26 }: { size?: number }) {
   return (
-    <span style={{ display: "inline-flex", alignItems: "baseline", gap: "0.55em" }}>
-      <span
-        style={{
-          fontFamily: "var(--font-mono), monospace",
-          fontSize: size,
-          fontWeight: 400,
-          letterSpacing: "0.3em",
-          textTransform: "uppercase",
-          color: "rgba(255,255,255,0.9)",
-        }}
-      >
-        {brand.wordmark}
-      </span>
+    <span style={{ display: "inline-flex", alignItems: "flex-end", gap: `${Math.round(size * 0.5)}px` }}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/mercury-logo-white.svg"
+        alt="mercury"
+        height={size}
+        style={{ height: size, width: "auto", display: "block" }}
+      />
       <span
         style={{
           fontFamily: "var(--font-mono), monospace",
           fontSize: Math.round(size * 0.62),
+          lineHeight: 1,
           letterSpacing: "0.28em",
           textTransform: "uppercase",
           color: color.blue,
           opacity: 0.9,
+          paddingBottom: Math.round(size * 0.06),
         }}
       >
         ops

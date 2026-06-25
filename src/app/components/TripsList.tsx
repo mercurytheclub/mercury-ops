@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { OpsTrip } from "@/server/airtable";
 
 const GROUPS: { key: OpsTrip["timeframe"]; label: string }[] = [
@@ -18,20 +18,35 @@ function fmtRange(start: string | null, end: string | null): string {
 // Match against the fields an ops user would search by. Cheap client-side
 // filter — the full trip list is already loaded, so no round-trip.
 function matches(t: OpsTrip, q: string): boolean {
-  const haystack = [
-    t.name,
-    t.leadGuest,
-    t.leadDestination,
-    t.tripCode,
-  ]
+  const haystack = [t.name, t.leadGuest, t.leadDestination, t.tripCode]
     .filter(Boolean)
     .join(" ")
     .toLowerCase();
   return q.split(/\s+/).every((term) => haystack.includes(term));
 }
 
+function SearchGlyph() {
+  return (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden>
+      <circle cx="11" cy="11" r="7" />
+      <line x1="16.5" y1="16.5" x2="21" y2="21" />
+    </svg>
+  );
+}
+
+function CloseGlyph() {
+  return (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden>
+      <line x1="6" y1="6" x2="18" y2="18" />
+      <line x1="18" y1="6" x2="6" y2="18" />
+    </svg>
+  );
+}
+
 export function TripsList({ trips }: { trips: OpsTrip[] }) {
+  const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
   const q = query.trim().toLowerCase();
 
   const filtered = useMemo(
@@ -39,34 +54,90 @@ export function TripsList({ trips }: { trips: OpsTrip[] }) {
     [trips, q],
   );
 
+  function openSearch() {
+    setOpen(true);
+    requestAnimationFrame(() => inputRef.current?.focus());
+  }
+
+  function closeSearch() {
+    setOpen(false);
+    setQuery("");
+  }
+
+  // Collapse on Escape; keep the affordance out of the way otherwise.
+  useEffect(() => {
+    if (!open) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") closeSearch();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
+
   return (
     <>
-      <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-        <input
-          type="search"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="search trips — guest, destination, trip code…"
-          aria-label="search trips"
-          autoComplete="off"
-          spellCheck={false}
+      <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", minHeight: "1.9rem" }}>
+        <div
           style={{
-            width: "100%",
-            background: "transparent",
-            border: 0,
-            borderBottom: "1px solid var(--mercury-rule)",
-            color: "var(--mercury-white)",
-            font: "inherit",
-            fontSize: "1rem",
-            padding: "0.6rem 0",
-            outline: "none",
+            display: "flex",
+            alignItems: "center",
+            gap: "0.55rem",
+            borderBottom: `1px solid ${open ? "var(--mercury-rule)" : "transparent"}`,
+            transition: "border-color 200ms ease",
+            paddingBottom: "0.3rem",
           }}
-        />
-        {q && (
-          <span className="label" style={{ opacity: 0.5 }}>
-            {filtered.length} {filtered.length === 1 ? "match" : "matches"}
-          </span>
-        )}
+        >
+          {open && q && (
+            <span className="label" style={{ opacity: 0.4, whiteSpace: "nowrap" }}>
+              {filtered.length}
+            </span>
+          )}
+          <input
+            ref={inputRef}
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onBlur={() => { if (!query) setOpen(false); }}
+            placeholder="guest, destination, trip code…"
+            aria-label="search trips"
+            aria-hidden={!open}
+            tabIndex={open ? 0 : -1}
+            autoComplete="off"
+            spellCheck={false}
+            style={{
+              width: open ? "min(20rem, 60vw)" : 0,
+              opacity: open ? 1 : 0,
+              background: "transparent",
+              border: 0,
+              color: "var(--mercury-white)",
+              font: "inherit",
+              fontSize: "0.9rem",
+              padding: 0,
+              outline: "none",
+              transition: "width 240ms ease, opacity 160ms ease",
+            }}
+          />
+          <button
+            type="button"
+            onClick={open ? closeSearch : openSearch}
+            aria-label={open ? "close search" : "search trips"}
+            aria-expanded={open}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              background: "transparent",
+              border: 0,
+              padding: 0,
+              cursor: "pointer",
+              color: "var(--mercury-white)",
+              opacity: 0.65,
+              flexShrink: 0,
+            }}
+          >
+            {open ? <CloseGlyph /> : <SearchGlyph />}
+          </button>
+        </div>
       </div>
 
       {filtered.length === 0 ? (

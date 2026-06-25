@@ -112,7 +112,7 @@ export default async function TripPage({ params }: { params: Promise<{ tripCode:
       <header style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
         <a href="/" style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem" }}>
           <span style={{ opacity: 0.5 }}>←</span>
-          <Wordmark size={14} />
+          <Wordmark size={18} />
         </a>
         <h1 style={{ margin: "0.3rem 0 0", fontSize: "2rem", fontWeight: 400 }}>{it.name}</h1>
         <div style={{ display: "flex", gap: "1.25rem", flexWrap: "wrap", fontFamily: "var(--font-mono), monospace", fontSize: "0.82rem", opacity: 0.7 }}>
