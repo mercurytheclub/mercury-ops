@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "description": "Mercury ops — internal web command center for the concierge team.",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
