@@ -113,12 +113,14 @@ export default async function TripPage({ params }: { params: Promise<{ tripCode:
 
   return (
     <main style={{ minHeight: "100vh", padding: "6vh 6vw", display: "flex", flexDirection: "column", gap: "2rem", maxWidth: 920, margin: "0 auto" }}>
-      <header style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
-        <a href="/" style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem" }}>
-          <span style={{ opacity: 0.5 }}>←</span>
-          <Wordmark size={18} />
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.4rem" }}>
+        <a href="/" aria-label="Back to all trips" style={{ display: "flex", justifyContent: "center" }}>
+          <Wordmark size={30} />
         </a>
-        <h1 style={{ margin: "0.3rem 0 0", fontSize: "2rem", fontWeight: 400 }}>{it.name}</h1>
+        <a href="/" className="label" style={{ opacity: 0.5 }}>← all trips</a>
+      </div>
+      <header style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
+        <h1 style={{ margin: 0, fontSize: "2rem", fontWeight: 400 }}>{it.name}</h1>
         <div style={{ display: "flex", gap: "1.25rem", flexWrap: "wrap", fontFamily: "var(--font-mono), monospace", fontSize: "0.82rem", opacity: 0.7 }}>
           <span>{it.tripCode}</span>
           <span>{dateRange}</span>
