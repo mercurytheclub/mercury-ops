@@ -41,9 +41,19 @@ All Airtable access lives in **`src/server/airtable.ts`**, which begins with `im
 - **Setup:** copy `.env.local.example` → `.env.local` and set `AIRTABLE_TOKEN` (read scope, same base as the consumer). Without it, loaders return empty and the UI shows a "set the token" prompt — no crash.
 - Don't shape new schemas that duplicate Airtable; an itinerary is the projection of all reservations sharing a Trip Code, exactly as in the consumer app.
 
+### Per-trip itinerary (`src/server/itinerary.ts`)
+
+`loadItinerary(tripCode)` builds the full day-by-day itinerary for one trip and is rendered at **`/trip/[tripCode]`** (also `GET /api/trips/[tripCode]` as JSON). This is the link target from the Airtable interface: `https://<ops-host>/trip/TR00000001`.
+
+- **This is the admin view** — unlike the guest app, every card carries an `admin` block with internal fields: cost lines (e.g. flight `Net Cost (Internal Only)`, hotel `BC/GPC Grand Total`, villa `Grand Total`), `supplier`, `contact` (driver/operator name + phone), `locator` (PNR/record locator/confirmation), and `notes`. The trip header rolls these up into per-currency totals.
+- **Adding a booking category = one loader.** Write a `Loader` that reads its table, filters by linked `Trip ID`, and returns `Reservation[]`, then add it to `CATEGORY_LOADERS`. Currently implemented: flights, hotels, villas, car service, restaurants, activities. Not yet: private flights, cruises, yachts, trains, helicopters, greeters, VIP terminals/events (~12 more tables — same pattern).
+- **Names come from the master when the booking's denorm text is blank** — `nameMapLoader` resolves the linked Hotels/Restaurants/Activities master so a card never shows a generic "Hotel".
+- Dates/times are folded with `combineDateTime` into floating local ISO (no timezone) — the wall clock at the booking's location is the source of truth; render verbatim, never convert to the viewer's zone.
+- **Open data question:** the hotel "guest price" cost line is labelled `USD` by assumption (`GPC - Grand Total`); confirm the real currency before trusting it. Some booking rows have empty `Hotel Name`/guest links — handled gracefully (master fallback / trip-level guests).
+
 ## Structure
-- `src/app/` — Next.js App Router (`layout.tsx` mounts fonts + globals; `page.tsx` is the trips list; `api/trips/route.ts` is the JSON endpoint).
-- `src/server/` — server-only data access. Anything importing `server-only` must never be imported by a client component.
+- `src/app/` — Next.js App Router (`layout.tsx` mounts fonts + globals; `page.tsx` is the trips list; `trip/[tripCode]/page.tsx` is the itinerary; `api/trips/**` are the JSON endpoints).
+- `src/server/` — server-only data access (`airtable.ts` = client primitives + trips; `itinerary.ts` = booking loaders + day grouping). Anything importing `server-only` must never be imported by a client component.
 - `vendor/brand/` — the `mercury-brand` submodule. Treat as read-only from here.
 - Path aliases (`tsconfig.json`): `@/*` → `src/*`, `@brand` → the brand tokens.
 

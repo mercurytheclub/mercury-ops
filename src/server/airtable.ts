@@ -10,13 +10,13 @@ import "server-only";
 // The patterns below (paginated fetch, single-flight SWR cache, linked-record
 // resolution) are ported from the consumer server so the two stay consistent.
 
-const BASE_ID = "app6LKGIKc3rUeHiP";
+export const BASE_ID = "app6LKGIKc3rUeHiP";
 
 // Real table IDs (shared with the consumer base).
 const TRIPS_TABLE_ID = "tblmESP7ooV2ZWSr6"; // Trips
 const GUESTS_TABLE_ID = "tblXcehCFamvNdOae"; // Guest Information
 
-const TOKEN = process.env.AIRTABLE_TOKEN;
+export const TOKEN = process.env.AIRTABLE_TOKEN;
 
 // Freshness window: served instantly while fresh; past it, served stale while a
 // background refresh fires (stale-while-revalidate). Airtable's per-base limit
@@ -28,7 +28,7 @@ const CACHE_MAX_STALE_MS = 30 * 60_000;
 // Single-flight SWR cache (ported from the consumer server)
 // ---------------------------------------------------------------------------
 
-function makeCached<T>(
+export function makeCached<T>(
   fetcher: () => Promise<T>,
   ttlMs = CACHE_TTL_MS,
   maxStaleMs = CACHE_MAX_STALE_MS,
@@ -83,7 +83,7 @@ async function fetchAirtablePage<T>(tableId: string, offset?: string): Promise<A
   return (await res.json()) as AirtablePage<T>;
 }
 
-async function fetchAllPages<T>(tableId: string): Promise<T[]> {
+export async function fetchAllPages<T>(tableId: string): Promise<T[]> {
   const all: T[] = [];
   let offset: string | undefined;
   do {
@@ -95,10 +95,41 @@ async function fetchAllPages<T>(tableId: string): Promise<T[]> {
 }
 
 // Airtable returns linked-record fields as bare arrays of record IDs.
-type LinkedRecord = { id: string } | string;
-function linkedIds(field: unknown): string[] {
+export type LinkedRecord = { id: string } | string;
+export function linkedIds(field: unknown): string[] {
   if (!Array.isArray(field)) return [];
   return field.map((v) => (typeof v === "string" ? v : v?.id)).filter(Boolean) as string[];
+}
+
+// ---------------------------------------------------------------------------
+// combineDateTime — fold an Airtable Date ("YYYY-MM-DD") + Time field into a
+// floating ISO datetime ("YYYY-MM-DDTHH:MM:SS"), no timezone offset. The wall
+// clock at the booking's location is the source of truth; we render it verbatim
+// and never convert to the viewer's local time. Returns null if the date is
+// missing; tolerates 12h ("8:00 PM") and 24h time, or no time at all.
+// ---------------------------------------------------------------------------
+
+export function combineDateTime(
+  date: string | null | undefined,
+  time: string | null | undefined,
+): string | null {
+  if (!date) return null;
+  const day = String(date).slice(0, 10);
+  let hh = 0;
+  let mm = 0;
+  if (time) {
+    const raw = String(time).trim();
+    const m = raw.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(am|pm)?$/i);
+    if (m) {
+      hh = parseInt(m[1], 10);
+      mm = parseInt(m[2], 10);
+      const mer = m[4]?.toLowerCase();
+      if (mer === "pm" && hh !== 12) hh += 12;
+      if (mer === "am" && hh === 12) hh = 0;
+    }
+  }
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${day}T${pad(hh)}:${pad(mm)}:00`;
 }
 
 // ---------------------------------------------------------------------------
@@ -110,7 +141,7 @@ type GuestsAirtableRow = {
   fields: { "Full Name"?: string };
 };
 
-const loadGuestsMap = makeCached(async () => {
+export const loadGuestsMap = makeCached(async () => {
   const map = new Map<string, string>();
   if (!TOKEN) return map;
   const rows = await fetchAllPages<GuestsAirtableRow>(GUESTS_TABLE_ID);
@@ -118,11 +149,29 @@ const loadGuestsMap = makeCached(async () => {
   return map;
 });
 
+/** Resolve a Lead Guest + Companions/Guest set of linked-record fields to names. */
+export function resolveGuestNames(
+  guests: Map<string, string>,
+  ...fields: unknown[]
+): string[] {
+  const names: string[] = [];
+  const seen = new Set<string>();
+  for (const f of fields) {
+    for (const id of linkedIds(f)) {
+      if (seen.has(id)) continue;
+      seen.add(id);
+      const name = guests.get(id);
+      if (name) names.push(name);
+    }
+  }
+  return names;
+}
+
 // ---------------------------------------------------------------------------
 // Trips — the first ops surface
 // ---------------------------------------------------------------------------
 
-type TripAirtableRow = {
+export type TripAirtableRow = {
   id: string;
   fields: {
     "Trip ID"?: string;
@@ -135,6 +184,15 @@ type TripAirtableRow = {
     "Lead Destination"?: string;
   };
 };
+
+/** Raw Trip rows, cached. Shared by the list loader and the itinerary builder. */
+export const loadTripRows = makeCached(async (): Promise<TripAirtableRow[]> => {
+  if (!TOKEN) {
+    console.warn("AIRTABLE_TOKEN not set — trips unavailable (set it in .env.local)");
+    return [];
+  }
+  return fetchAllPages<TripAirtableRow>(TRIPS_TABLE_ID);
+});
 
 /** Lean trip summary for the ops list. Full reservation hydration comes later. */
 export type OpsTrip = {
@@ -163,14 +221,7 @@ function timeframeOf(start: string | null, end: string | null, now: Date): OpsTr
  * undated last). Cached + de-duped so concurrent requests share one fan-out.
  */
 export const loadTrips = makeCached(async (): Promise<OpsTrip[]> => {
-  if (!TOKEN) {
-    console.warn("AIRTABLE_TOKEN not set — trips unavailable (set it in .env.local)");
-    return [];
-  }
-  const [rows, guests] = await Promise.all([
-    fetchAllPages<TripAirtableRow>(TRIPS_TABLE_ID),
-    loadGuestsMap(),
-  ]);
+  const [rows, guests] = await Promise.all([loadTripRows(), loadGuestsMap()]);
   const now = new Date();
   const trips = rows.map((row): OpsTrip => {
     const f = row.fields;
