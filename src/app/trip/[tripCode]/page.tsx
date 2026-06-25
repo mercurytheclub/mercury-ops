@@ -1,5 +1,6 @@
 import { loadItinerary, type Reservation } from "@/server/itinerary";
-import { brand, color } from "@brand";
+import { color } from "@brand";
+import { Wordmark } from "@/app/components/Wordmark";
 import { notFound } from "next/navigation";
 
 export const dynamic = "force-dynamic";
@@ -109,7 +110,10 @@ export default async function TripPage({ params }: { params: Promise<{ tripCode:
   return (
     <main style={{ minHeight: "100vh", padding: "6vh 6vw", display: "flex", flexDirection: "column", gap: "2rem", maxWidth: 920, margin: "0 auto" }}>
       <header style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
-        <a href="/" className="label" style={{ opacity: 0.6 }}>← {brand.wordmark} ops</a>
+        <a href="/" style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem" }}>
+          <span style={{ opacity: 0.5 }}>←</span>
+          <Wordmark size={14} />
+        </a>
         <h1 style={{ margin: "0.3rem 0 0", fontSize: "2rem", fontWeight: 400 }}>{it.name}</h1>
         <div style={{ display: "flex", gap: "1.25rem", flexWrap: "wrap", fontFamily: "var(--font-mono), monospace", fontSize: "0.82rem", opacity: 0.7 }}>
           <span>{it.tripCode}</span>

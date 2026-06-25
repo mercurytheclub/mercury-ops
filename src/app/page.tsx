@@ -1,5 +1,6 @@
 import { loadTrips, type OpsTrip } from "@/server/airtable";
-import { brand, color } from "@brand";
+import { color } from "@brand";
+import { Wordmark } from "./components/Wordmark";
 
 // Server component: reads Airtable directly through the server-only loader.
 // No client-side fetch, no token in the browser.
@@ -22,11 +23,8 @@ export default async function Home() {
 
   return (
     <main style={{ minHeight: "100vh", padding: "6vh 6vw", display: "flex", flexDirection: "column", gap: "2.5rem" }}>
-      <header style={{ display: "flex", alignItems: "baseline", gap: "1rem" }}>
-        <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: "1.4rem", textTransform: "lowercase" }}>
-          {brand.wordmark}
-        </span>
-        <span className="label" style={{ color: color.blue }}>ops</span>
+      <header>
+        <Wordmark size={20} />
       </header>
 
       {trips.length === 0 ? (
