@@ -72,15 +72,32 @@ export function makeCached<T>(
 
 type AirtablePage<T> = { records: T[]; offset?: string };
 
+// How long an Airtable page stays cached in Vercel's Data Cache. Served stale
+// instantly while it revalidates in the background, so ops edits surface within
+// this window without anyone waiting on a cold Airtable fan-out.
+const AIRTABLE_REVALIDATE_S = 60;
+
 async function fetchAirtablePage<T>(tableId: string, offset?: string): Promise<AirtablePage<T>> {
   const params = new URLSearchParams({ pageSize: "100" });
   if (offset) params.set("offset", offset);
   const url = `https://api.airtable.com/v0/${BASE_ID}/${tableId}?${params.toString()}`;
-  const res = await fetch(url, { headers: { Authorization: `Bearer ${TOKEN}` } });
-  if (!res.ok) {
-    throw new Error(`Airtable fetch failed for ${tableId}: ${res.status} ${await res.text()}`);
+  // Cache each page in Vercel's Data Cache (shared across serverless
+  // invocations) — this is what makes repeat loads fast. Retry on 429 since the
+  // booking tables now load in parallel (see itinerary.ts).
+  for (let attempt = 0; ; attempt++) {
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${TOKEN}` },
+      next: { revalidate: AIRTABLE_REVALIDATE_S },
+    });
+    if (res.status === 429 && attempt < 4) {
+      await new Promise((r) => setTimeout(r, 300 * (attempt + 1)));
+      continue;
+    }
+    if (!res.ok) {
+      throw new Error(`Airtable fetch failed for ${tableId}: ${res.status} ${await res.text()}`);
+    }
+    return (await res.json()) as AirtablePage<T>;
   }
-  return (await res.json()) as AirtablePage<T>;
 }
 
 export async function fetchAllPages<T>(tableId: string): Promise<T[]> {

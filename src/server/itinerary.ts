@@ -529,16 +529,18 @@ const CATEGORY_LOADERS: Loader[] = [
 const loadAllReservations = makeCached(async (): Promise<Reservation[]> => {
   if (!TOKEN) return [];
   const guests = await loadGuestsMap();
-  const all: Reservation[] = [];
-  // Sequential to stay under Airtable's 5 req/sec per-base limit.
-  for (const load of CATEGORY_LOADERS) {
-    try {
-      all.push(...(await load(guests)));
-    } catch (err) {
-      console.warn("category loader failed (skipped):", err);
-    }
-  }
-  return all;
+  // Load every category in parallel — wall-clock is the slowest single table,
+  // not the sum. Airtable responses are cached in Vercel's Data Cache and
+  // fetchAirtablePage retries on 429, so the parallel burst is safe.
+  const byCategory = await Promise.all(
+    CATEGORY_LOADERS.map((load) =>
+      load(guests).catch((err) => {
+        console.warn("category loader failed (skipped):", err);
+        return [] as Reservation[];
+      }),
+    ),
+  );
+  return byCategory.flat();
 });
 
 // ---------------------------------------------------------------------------

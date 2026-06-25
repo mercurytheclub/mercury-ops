@@ -3,7 +3,9 @@ import { color } from "@brand";
 import { Wordmark } from "@/app/components/Wordmark";
 import { notFound } from "next/navigation";
 
-export const dynamic = "force-dynamic";
+// ISR: render once, then serve the cached page instantly and revalidate in the
+// background. Opening (and re-opening) a trip is fast; edits surface within 60s.
+export const revalidate = 60;
 
 const CATEGORY_LABEL: Record<Reservation["category"], string> = {
   flight: "FLIGHT",

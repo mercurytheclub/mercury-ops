@@ -5,7 +5,8 @@ import { TripsList } from "./components/TripsList";
 // Server component: reads Airtable directly through the server-only loader.
 // No client-side fetch, no token in the browser. The list + search UI is a
 // client component (TripsList) hydrated with the loaded trips.
-export const dynamic = "force-dynamic";
+// ISR: cached + revalidated every 60s so the list loads instantly.
+export const revalidate = 60;
 
 export default async function Home() {
   const trips = await loadTrips();
