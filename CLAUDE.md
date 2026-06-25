@@ -31,10 +31,21 @@ The Mercury identity is the single-source-of-truth repo `mercury-brand`, mounted
 - Wordmark **lowercase** "mercury", tagline "concierge travel". Mono micro-labels (Inconsolata, uppercase, e.g. FLIGHT). Body copy in Atkinson Hyperlegible.
 - Hairlines, not borders. No oversized icons, no glowing outlines. No guest-facing codes/abbreviations (FLIGHT not FL), full names always, no concierge clichés, no filler copy. When unsure, show less.
 
+## Data layer (Airtable, server-only)
+
+All Airtable access lives in **`src/server/airtable.ts`**, which begins with `import "server-only"` — it can never be pulled into a client bundle, so the `AIRTABLE_TOKEN` never reaches the browser. This mirrors `mercury-consumer/server/src/airtable.ts`; the helpers (paginated `fetchAllPages`, single-flight SWR `makeCached`, `linkedIds`) are ported from it so the two stay consistent.
+
+- **Tables are referenced by ID**, not name (`Trips` = `tblmESP7ooV2ZWSr6`, `Guest Information` = `tblXcehCFamvNdOae`, base `app6LKGIKc3rUeHiP`). Names/emoji change; IDs don't.
+- `loadTrips()` returns the lean `OpsTrip[]` (code, name, dates, lead guest resolved via the guests map, guest count, status, derived `timeframe`). Cached + de-duped.
+- Consumed two ways: the home server component (`src/app/page.tsx`, `force-dynamic`) renders the list directly; `GET /api/trips` returns the same data as JSON.
+- **Setup:** copy `.env.local.example` → `.env.local` and set `AIRTABLE_TOKEN` (read scope, same base as the consumer). Without it, loaders return empty and the UI shows a "set the token" prompt — no crash.
+- Don't shape new schemas that duplicate Airtable; an itinerary is the projection of all reservations sharing a Trip Code, exactly as in the consumer app.
+
 ## Structure
-- `src/app/` — Next.js App Router (`layout.tsx` mounts fonts + globals; `page.tsx` is the brand-wired shell).
+- `src/app/` — Next.js App Router (`layout.tsx` mounts fonts + globals; `page.tsx` is the trips list; `api/trips/route.ts` is the JSON endpoint).
+- `src/server/` — server-only data access. Anything importing `server-only` must never be imported by a client component.
 - `vendor/brand/` — the `mercury-brand` submodule. Treat as read-only from here.
 - Path aliases (`tsconfig.json`): `@/*` → `src/*`, `@brand` → the brand tokens.
 
 ## Not yet built (expected next)
-Airtable data access through a server boundary (mirror `mercury-consumer/server`), auth for ops users, and the ops surfaces themselves (itinerary builder, guest/trip management). When adding the data layer, reference tables by **ID** not name, as the consumer server does.
+Per-trip detail (hydrate a trip's reservations — port the per-category booking loaders from the consumer server as needed), auth for ops users, and write paths (Airtable writes go through the Airtable MCP / a server action, never the read token). Build on the `src/server/` boundary; keep the browser token-free.
