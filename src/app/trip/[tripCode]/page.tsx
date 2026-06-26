@@ -140,7 +140,11 @@ export default async function TripPage({ params }: { params: Promise<{ tripCode:
       {/* Back link sits just above the trip title, not hugging the logo. */}
       <header style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
         <a href="/" className="label" style={{ opacity: 0.6, whiteSpace: "nowrap", alignSelf: "flex-start", marginBottom: "0.4rem" }}>← all trips</a>
-        <h1 style={{ margin: 0, fontSize: "2rem", fontWeight: 400 }}>{it.name}</h1>
+        {/* Title left, trip-level "link existing booking" action right. */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem", flexWrap: "wrap" }}>
+          <h1 style={{ margin: 0, fontSize: "2rem", fontWeight: 400 }}>{it.name}</h1>
+          <LinkBookingEditor tripCode={it.tripCode} tripName={it.name} tripRecordId={it.tripRecordId} />
+        </div>
         <div style={{ display: "flex", gap: "1.25rem", flexWrap: "wrap", fontFamily: "var(--font-mono), monospace", fontSize: "0.82rem", opacity: 0.7 }}>
           <span>{it.tripCode}</span>
           <span>{dateRange}</span>
@@ -162,12 +166,6 @@ export default async function TripPage({ params }: { params: Promise<{ tripCode:
           </div>
         ) : null}
       </header>
-
-      {/* Itinerary toolbar — trip-level "link existing booking" (per-day "+ add"
-          and per-day "link existing…" live next to each date below). */}
-      <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center" }}>
-        <LinkBookingEditor tripCode={it.tripCode} tripName={it.name} tripRecordId={it.tripRecordId} />
-      </div>
 
       <hr className="hairline" />
 
