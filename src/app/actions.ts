@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { getBookingForEdit, saveBooking, type BookingValues, type SaveResult } from "@/server/bookings";
+import { createTrip, type CreateTripInput, type CreateTripResult } from "@/server/trips";
+import { loadGuestOptions, type GuestOption } from "@/server/airtable";
 import { notifyTeam } from "@/server/notify";
 import type { BookingType } from "@/lib/bookingFields";
 
@@ -33,5 +35,17 @@ export async function saveBookingAction(input: {
       revalidatePath("/");
     }
   }
+  return result;
+}
+
+/** Guests for the "new trip" lead-guest / companions picker (loaded on open). */
+export async function loadGuestOptionsAction(): Promise<GuestOption[]> {
+  return loadGuestOptions();
+}
+
+/** Create a trip, then refresh the trips list. */
+export async function createTripAction(input: CreateTripInput): Promise<CreateTripResult> {
+  const result = await createTrip(input);
+  if (result.ok) revalidatePath("/");
   return result;
 }

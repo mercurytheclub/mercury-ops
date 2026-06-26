@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { OpsTrip } from "@/server/airtable";
+import { TripEditor } from "./TripEditor";
 
 const GROUPS: { key: OpsTrip["timeframe"]; label: string }[] = [
   { key: "in_progress", label: "in progress" },
@@ -44,14 +46,28 @@ function CloseGlyph() {
 }
 
 export function TripsList({ trips }: { trips: OpsTrip[] }) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
   const q = query.trim().toLowerCase();
 
+  // Trips created this session, shown instantly. Once the server list catches up
+  // (it includes the new code), the optimistic copy is deduped out.
+  const [created, setCreated] = useState<OpsTrip[]>([]);
+  const allTrips = useMemo(() => {
+    const codes = new Set(trips.map((t) => t.tripCode));
+    return [...created.filter((c) => !codes.has(c.tripCode)), ...trips];
+  }, [trips, created]);
+
+  function handleCreated(trip: OpsTrip) {
+    setCreated((c) => [trip, ...c]);
+    router.refresh(); // reconcile with canonical Airtable data in the background
+  }
+
   const filtered = useMemo(
-    () => (q ? trips.filter((t) => matches(t, q)) : trips),
-    [trips, q],
+    () => (q ? allTrips.filter((t) => matches(t, q)) : allTrips),
+    [allTrips, q],
   );
 
   function openSearch() {
@@ -76,7 +92,8 @@ export function TripsList({ trips }: { trips: OpsTrip[] }) {
 
   return (
     <>
-      <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", minHeight: "1.9rem" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem", minHeight: "1.9rem" }}>
+        <TripEditor onCreated={handleCreated} />
         <div
           style={{
             display: "flex",

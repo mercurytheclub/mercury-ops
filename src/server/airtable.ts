@@ -29,11 +29,14 @@ const CACHE_MAX_STALE_MS = 30 * 60_000;
 // Single-flight SWR cache (ported from the consumer server)
 // ---------------------------------------------------------------------------
 
+/** A cached loader; `.bust()` drops the in-memory value so the next call refetches. */
+export type Cached<T> = (() => Promise<T>) & { bust: () => void };
+
 export function makeCached<T>(
   fetcher: () => Promise<T>,
   ttlMs = CACHE_TTL_MS,
   maxStaleMs = CACHE_MAX_STALE_MS,
-): () => Promise<T> {
+): Cached<T> {
   let cache: { ts: number; value: T } | null = null;
   let inFlight: Promise<T> | null = null;
   const run = (): Promise<T> => {
@@ -49,7 +52,7 @@ export function makeCached<T>(
     })();
     return inFlight;
   };
-  return async (): Promise<T> => {
+  const cached = (async (): Promise<T> => {
     if (cache) {
       const age = Date.now() - cache.ts;
       if (age < ttlMs) return cache.value;
@@ -64,7 +67,13 @@ export function makeCached<T>(
       }
     }
     return run();
+  }) as Cached<T>;
+  // After a write, callers bust this so the very next read reflects the change
+  // (revalidatePath clears Next's data cache, but not this in-memory layer).
+  cached.bust = () => {
+    cache = null;
   };
+  return cached;
 }
 
 // ---------------------------------------------------------------------------
@@ -186,6 +195,18 @@ const loadGuestEntries = unstable_cache(
 
 export const loadGuestsMap = makeCached(async () => new Map(await loadGuestEntries()));
 
+/** A guest as an option for the "new trip" lead-guest / companions picker. */
+export type GuestOption = { id: string; name: string };
+
+/** All guests as `{id, name}`, sorted by name — feeds the trip guest picker. */
+export const loadGuestOptions = makeCached(async (): Promise<GuestOption[]> => {
+  const guests = await loadGuestsMap();
+  return [...guests.entries()]
+    .filter(([, name]) => name)
+    .map(([id, name]) => ({ id, name }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+});
+
 /** Resolve a Lead Guest + Companions/Guest set of linked-record fields to names. */
 export function resolveGuestNames(
   guests: Map<string, string>,
@@ -251,7 +272,7 @@ export type OpsTrip = {
   timeframe: "in_progress" | "upcoming" | "past" | "undated";
 };
 
-function timeframeOf(start: string | null, end: string | null, now: Date): OpsTrip["timeframe"] {
+export function timeframeOf(start: string | null, end: string | null, now: Date): OpsTrip["timeframe"] {
   if (!start) return "undated";
   const today = now.toISOString().slice(0, 10);
   if (end && end < today) return "past";
