@@ -87,7 +87,7 @@ a { color: var(--mercury-blue); text-decoration: none; }
   top: calc(100% + 0.4rem);
   right: 0;
   z-index: 50;
-  min-width: 168px;
+  min-width: 196px;
   display: flex;
   flex-direction: column;
   padding: 0.3rem;
@@ -340,8 +340,18 @@ select.bk-input option { background: #0c0c0c; color: var(--mercury-white); }
 
 /* ─── Link existing booking ────────────────────────────────────────────── */
 /* per-day menu: separator + the "link existing…" item */
-.day-add-sep { border: 0; border-top: 1px solid var(--mercury-rule); margin: 0.3rem 0.2rem; }
-.bk-menu-link { text-transform: none; opacity: 0.75; }
+.day-add-sep { border: 0; border-top: 1px solid var(--mercury-rule); margin: 0.35rem 0.4rem; }
+.bk-menu-link {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  text-transform: none;
+  white-space: nowrap;
+  font-size: 0.82rem;
+  opacity: 0.7;
+}
+.bk-menu-link svg { flex-shrink: 0; opacity: 0.85; }
+.bk-menu-link:hover { opacity: 1; color: var(--mercury-blue); background: rgba(82, 165, 211, 0.1); }
 
 /* search results (reuses .gp-menu / .gp-item) with a title + meta line */
 .lb-results { margin-top: 0.5rem; }
