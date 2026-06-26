@@ -4,6 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { BOOKING_CONFIG, type BookingType, type FieldDef } from "@/lib/bookingFields";
 import { loadBookingForEditAction, saveBookingAction } from "@/app/actions";
+import { showToast } from "@/app/components/Toast";
 import type { BookingValues } from "@/server/bookings";
 
 const ACCENT = "#52A5D3";
@@ -75,6 +76,8 @@ export function BookingEditor({ type, tripCode, tripName, variant, recordId, tri
         values,
       });
       if (res.ok) {
+        const label = cfg.label.charAt(0).toUpperCase() + cfg.label.slice(1);
+        showToast(`${label} booking ${variant === "edit" ? "updated" : "created"}`);
         setOpen(false);
         router.refresh();
       } else {

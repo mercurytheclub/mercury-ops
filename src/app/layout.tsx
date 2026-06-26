@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { inconsolata, atkinson } from "./fonts";
 import { InitialLoader } from "./components/InitialLoader";
+import { Toaster } from "./components/Toast";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -14,6 +15,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <InitialLoader />
         {children}
+        <Toaster />
       </body>
     </html>
   );
