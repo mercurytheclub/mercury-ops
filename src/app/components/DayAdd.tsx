@@ -76,7 +76,7 @@ export function DayAdd({
               setLinkOpen(true);
             }}
           >
-            link existing…
+            link existing booking…
           </button>
         </div>
       ) : null}

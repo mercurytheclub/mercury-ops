@@ -148,14 +148,14 @@ export function LinkBookingEditor({
   return (
     <>
       {open ? (
-        <div className="bk-overlay" role="dialog" aria-modal="true" aria-label="link existing booking">
+        <div className="bk-overlay" role="dialog" aria-modal="true" aria-label="Link an existing booking">
           <div className="bk-backdrop" onClick={() => !pending && close()} />
           <div className="bk-panel">
             <header className="bk-panel-head">
               <div>
-                <span className="label" style={{ color: ACCENT, fontSize: "0.62rem" }}>link existing</span>
+                <span className="label" style={{ color: ACCENT, fontSize: "0.62rem" }}>add to itinerary</span>
                 <h2 style={{ margin: "0.2rem 0 0", fontSize: "1.3rem", fontWeight: 400 }}>
-                  {selected ? selected.title : "booking"}
+                  {selected ? selected.title : "Link an existing booking"}
                 </h2>
               </div>
               <button type="button" className="bk-close" onClick={() => !pending && close()} aria-label="Close">✕</button>
