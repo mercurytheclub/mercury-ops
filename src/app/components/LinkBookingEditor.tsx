@@ -21,17 +21,17 @@ type Props = {
   tripRecordId: string;
   /** Day to place a linked booking on (per-day entry). Confirms with this date. */
   initialDate?: string;
-  triggerVariant?: "button" | "none";
   defaultOpen?: boolean;
   onClose?: () => void;
 };
 
+// Opened by a parent (the per-day "link existing…" menu item) — mounted with
+// defaultOpen, controlled via onClose. It renders no trigger of its own.
 export function LinkBookingEditor({
   tripCode,
   tripName,
   tripRecordId,
   initialDate,
-  triggerVariant = "button",
   defaultOpen = false,
   onClose,
 }: Props) {
@@ -147,13 +147,6 @@ export function LinkBookingEditor({
 
   return (
     <>
-      {triggerVariant === "button" ? (
-        <button type="button" onClick={handleOpen} className="link-existing-btn label">
-          <span className="link-existing-glyph" aria-hidden>⧉</span>
-          link existing booking
-        </button>
-      ) : null}
-
       {open ? (
         <div className="bk-overlay" role="dialog" aria-modal="true" aria-label="link existing booking">
           <div className="bk-backdrop" onClick={() => !pending && close()} />

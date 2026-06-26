@@ -4,7 +4,6 @@ import { color } from "@brand";
 import { Wordmark } from "@/app/components/Wordmark";
 import { BookingEditor } from "@/app/components/BookingEditor";
 import { DayAdd } from "@/app/components/DayAdd";
-import { LinkBookingEditor } from "@/app/components/LinkBookingEditor";
 import { type BookingType } from "@/lib/bookingFields";
 import { notFound } from "next/navigation";
 
@@ -140,11 +139,7 @@ export default async function TripPage({ params }: { params: Promise<{ tripCode:
       {/* Back link sits just above the trip title, not hugging the logo. */}
       <header style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
         <a href="/" className="label" style={{ opacity: 0.6, whiteSpace: "nowrap", alignSelf: "flex-start", marginBottom: "0.4rem" }}>← all trips</a>
-        {/* Title left, trip-level "link existing booking" action right. */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem", flexWrap: "wrap" }}>
-          <h1 style={{ margin: 0, fontSize: "2rem", fontWeight: 400 }}>{it.name}</h1>
-          <LinkBookingEditor tripCode={it.tripCode} tripName={it.name} tripRecordId={it.tripRecordId} />
-        </div>
+        <h1 style={{ margin: 0, fontSize: "2rem", fontWeight: 400 }}>{it.name}</h1>
         <div style={{ display: "flex", gap: "1.25rem", flexWrap: "wrap", fontFamily: "var(--font-mono), monospace", fontSize: "0.82rem", opacity: 0.7 }}>
           <span>{it.tripCode}</span>
           <span>{dateRange}</span>

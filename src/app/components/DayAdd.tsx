@@ -97,7 +97,6 @@ export function DayAdd({
 
       {linkOpen ? (
         <LinkBookingEditor
-          triggerVariant="none"
           defaultOpen
           initialDate={date}
           tripCode={tripCode}
