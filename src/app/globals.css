@@ -53,6 +53,54 @@ a { color: var(--mercury-blue); text-decoration: none; }
 }
 .bk-trigger-add:hover { opacity: 1; border-color: var(--mercury-blue); color: var(--mercury-blue); }
 
+/* ─── Per-day "+ add" + type menu ──────────────────────────────────────── */
+.day-add { position: relative; flex-shrink: 0; }
+.day-add-btn {
+  background: none;
+  border: 0;
+  cursor: pointer;
+  color: var(--mercury-white);
+  opacity: 0.4;
+  font-size: 0.6rem;
+  padding: 0.2rem 0.3rem;
+  transition: opacity 0.15s, color 0.15s;
+}
+.day-add-btn:hover, .day-add-btn[aria-expanded="true"] { opacity: 1; color: var(--mercury-blue); }
+
+.day-add-menu {
+  position: absolute;
+  top: calc(100% + 0.4rem);
+  right: 0;
+  z-index: 50;
+  min-width: 168px;
+  display: flex;
+  flex-direction: column;
+  padding: 0.3rem;
+  background: rgba(16, 16, 16, 0.92);
+  backdrop-filter: blur(16px) saturate(1.2);
+  -webkit-backdrop-filter: blur(16px) saturate(1.2);
+  border: 1px solid var(--mercury-rule-2);
+  border-radius: 10px;
+  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.55);
+  animation: bk-fade 0.16s ease;
+}
+.bk-menu-item {
+  background: none;
+  border: 0;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  color: var(--mercury-white);
+  font-family: var(--font-body), system-ui, sans-serif;
+  font-size: 0.9rem;
+  text-transform: capitalize;
+  padding: 0.55rem 0.7rem;
+  border-radius: 6px;
+  opacity: 0.85;
+  transition: background 0.12s, opacity 0.12s, color 0.12s;
+}
+.bk-menu-item:hover { background: rgba(82, 165, 211, 0.12); color: var(--mercury-blue); opacity: 1; }
+
 /* ─── Booking editor: slide-over drawer ────────────────────────────────── */
 .bk-overlay { position: fixed; inset: 0; z-index: 1000; }
 .bk-backdrop {

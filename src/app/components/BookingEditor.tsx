@@ -17,27 +17,53 @@ type Props = {
   variant: "edit" | "add";
   recordId?: string;
   tripRecordId?: string;
+  /** Pre-fill the booking's date field (used by per-day "+ add"). */
+  initialDate?: string;
+  /** pill = toolbar chip, menu = dropdown row, none = no trigger (auto-opened). */
+  triggerVariant?: "pill" | "menu" | "none";
+  /** Open the drawer immediately on mount (for menu-driven adds). */
+  defaultOpen?: boolean;
+  /** Called whenever the drawer closes — lets a parent unmount this editor. */
+  onClose?: () => void;
 };
 
-function emptyValues(type: BookingType): BookingValues {
+function emptyValues(type: BookingType, initialDate?: string): BookingValues {
   const out: BookingValues = {};
+  const dateField = BOOKING_CONFIG[type].fields.find((f) => f.kind === "date")?.name;
   for (const f of BOOKING_CONFIG[type].fields) out[f.name] = f.kind === "multiselect" ? [] : "";
+  if (initialDate && dateField) out[dateField] = initialDate;
   return out;
 }
 
-export function BookingEditor({ type, tripCode, tripName, variant, recordId, tripRecordId }: Props) {
+export function BookingEditor({
+  type,
+  tripCode,
+  tripName,
+  variant,
+  recordId,
+  tripRecordId,
+  initialDate,
+  triggerVariant = "pill",
+  defaultOpen = false,
+  onClose,
+}: Props) {
   const cfg = BOOKING_CONFIG[type];
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [values, setValues] = useState<BookingValues>(() => emptyValues(type));
+  const [values, setValues] = useState<BookingValues>(() => emptyValues(type, initialDate));
   const [error, setError] = useState<string | null>(null);
   const [pending, startSave] = useTransition();
+
+  function close() {
+    setOpen(false);
+    onClose?.();
+  }
 
   // Lock body scroll + close on Escape while the drawer is open.
   useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && close();
     window.addEventListener("keydown", onKey);
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -45,6 +71,7 @@ export function BookingEditor({ type, tripCode, tripName, variant, recordId, tri
       window.removeEventListener("keydown", onKey);
       document.body.style.overflow = prev;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   async function handleOpen() {
@@ -53,12 +80,18 @@ export function BookingEditor({ type, tripCode, tripName, variant, recordId, tri
     if (variant === "edit" && recordId) {
       setLoading(true);
       const loaded = await loadBookingForEditAction(type, recordId);
-      setValues(loaded ?? emptyValues(type));
+      setValues(loaded ?? emptyValues(type, initialDate));
       setLoading(false);
     } else {
-      setValues(emptyValues(type));
+      setValues(emptyValues(type, initialDate));
     }
   }
+
+  // Auto-open once when requested (menu-driven add).
+  useEffect(() => {
+    if (defaultOpen) handleOpen();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function setField(name: string, value: string | string[]) {
     setValues((v) => ({ ...v, [name]: value }));
@@ -78,7 +111,7 @@ export function BookingEditor({ type, tripCode, tripName, variant, recordId, tri
       if (res.ok) {
         const label = cfg.label.charAt(0).toUpperCase() + cfg.label.slice(1);
         showToast(`${label} booking ${variant === "edit" ? "updated" : "created"}`);
-        setOpen(false);
+        close();
         router.refresh();
       } else {
         setError(res.error);
@@ -88,9 +121,13 @@ export function BookingEditor({ type, tripCode, tripName, variant, recordId, tri
 
   return (
     <>
-      {variant === "edit" ? (
+      {triggerVariant === "none" ? null : variant === "edit" ? (
         <button type="button" onClick={handleOpen} className="bk-trigger-edit label" aria-label={`Edit ${cfg.label}`}>
           edit
+        </button>
+      ) : triggerVariant === "menu" ? (
+        <button type="button" onClick={handleOpen} className="bk-menu-item">
+          {cfg.label}
         </button>
       ) : (
         <button type="button" onClick={handleOpen} className="bk-trigger-add label">
@@ -100,7 +137,7 @@ export function BookingEditor({ type, tripCode, tripName, variant, recordId, tri
 
       {open ? (
         <div className="bk-overlay" role="dialog" aria-modal="true" aria-label={`${variant} ${cfg.label}`}>
-          <div className="bk-backdrop" onClick={() => !pending && setOpen(false)} />
+          <div className="bk-backdrop" onClick={() => !pending && close()} />
           <div className="bk-panel">
             <header className="bk-panel-head">
               <div>
@@ -111,7 +148,7 @@ export function BookingEditor({ type, tripCode, tripName, variant, recordId, tri
                   {cfg.label}
                 </h2>
               </div>
-              <button type="button" className="bk-close" onClick={() => !pending && setOpen(false)} aria-label="Close">
+              <button type="button" className="bk-close" onClick={() => !pending && close()} aria-label="Close">
                 ✕
               </button>
             </header>
@@ -129,7 +166,7 @@ export function BookingEditor({ type, tripCode, tripName, variant, recordId, tri
             <footer className="bk-panel-foot">
               {error ? <p className="bk-error">{error}</p> : null}
               <div style={{ display: "flex", gap: "0.75rem", justifyContent: "flex-end" }}>
-                <button type="button" className="bk-btn-ghost label" onClick={() => setOpen(false)} disabled={pending}>
+                <button type="button" className="bk-btn-ghost label" onClick={() => close()} disabled={pending}>
                   cancel
                 </button>
                 <button type="button" className="bk-btn-save label" onClick={handleSave} disabled={pending || loading}>

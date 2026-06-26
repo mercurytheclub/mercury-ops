@@ -3,7 +3,8 @@ import type { Reservation } from "@/server/itinerary";
 import { color } from "@brand";
 import { Wordmark } from "@/app/components/Wordmark";
 import { BookingEditor } from "@/app/components/BookingEditor";
-import { BOOKING_TYPES, type BookingType } from "@/lib/bookingFields";
+import { DayAdd } from "@/app/components/DayAdd";
+import { type BookingType } from "@/lib/bookingFields";
 import { notFound } from "next/navigation";
 
 // Reservation categories that map 1:1 to an editable booking type.
@@ -161,21 +162,14 @@ export default async function TripPage({ params }: { params: Promise<{ tripCode:
         ) : null}
       </header>
 
-      {/* Add-booking toolbar — create new editable bookings on this trip. */}
-      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "0.6rem" }}>
-        <span className="label" style={{ opacity: 0.4, fontSize: "0.6rem", marginRight: "0.25rem" }}>add</span>
-        {BOOKING_TYPES.map((t) => (
-          <BookingEditor key={t} variant="add" type={t} tripCode={it.tripCode} tripName={it.name} tripRecordId={it.tripRecordId} />
-        ))}
-      </div>
-
       <hr className="hairline" />
 
       {it.days.map((day) => (
         <section key={day.date} style={{ display: "flex", flexDirection: "column" }}>
-          <h2 style={{ margin: "0 0 0.2rem", fontSize: "0.95rem", fontWeight: 400 }}>
-            {fmtDay(day.date)}
-          </h2>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "1rem", margin: "0 0 0.2rem" }}>
+            <h2 style={{ margin: 0, fontSize: "0.95rem", fontWeight: 400 }}>{fmtDay(day.date)}</h2>
+            <DayAdd date={day.date} tripCode={it.tripCode} tripName={it.name} tripRecordId={it.tripRecordId} />
+          </div>
           {day.reservations.length === 0 ? (
             <p style={{ opacity: 0.35, fontSize: "0.85rem", margin: "0.4rem 0 1rem" }}>nothing scheduled</p>
           ) : (
