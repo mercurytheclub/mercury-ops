@@ -131,15 +131,15 @@ export default async function TripPage({ params }: { params: Promise<{ tripCode:
       {/* Masthead mirrors the landing page: centered logo, then a control row
           beneath it. On the landing page that row holds the search (right-
           aligned); here it holds the back link (left-aligned, same row position). */}
-      <header style={{ display: "flex", justifyContent: "center", paddingBottom: "0.5rem" }}>
+      {/* Centered logo with generous space below it (its own header zone). */}
+      <header style={{ display: "flex", justifyContent: "center", paddingBottom: "3.5rem" }}>
         <a href="/" aria-label="Back to all trips" style={{ display: "flex" }}>
           <Wordmark size={30} />
         </a>
       </header>
-      <div style={{ display: "flex", justifyContent: "flex-start", alignItems: "center", minHeight: "1.9rem", paddingBottom: "3.25rem" }}>
-        <a href="/" className="label" style={{ opacity: 0.6, whiteSpace: "nowrap" }}>← all trips</a>
-      </div>
+      {/* Back link sits just above the trip title, not hugging the logo. */}
       <header style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
+        <a href="/" className="label" style={{ opacity: 0.6, whiteSpace: "nowrap", alignSelf: "flex-start", marginBottom: "0.4rem" }}>← all trips</a>
         <h1 style={{ margin: 0, fontSize: "2rem", fontWeight: 400 }}>{it.name}</h1>
         <div style={{ display: "flex", gap: "1.25rem", flexWrap: "wrap", fontFamily: "var(--font-mono), monospace", fontSize: "0.82rem", opacity: 0.7 }}>
           <span>{it.tripCode}</span>
