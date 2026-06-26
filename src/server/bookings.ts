@@ -4,7 +4,7 @@ import "server-only";
 // for the drawer, and writes edits/creates back to Airtable via the REST API
 // (the token has write scope). Tables + field names come from the shared config.
 
-import { BASE_ID, TOKEN } from "./airtable";
+import { BASE_ID, TOKEN, fetchAllPages, linkedIds, loadTripRows } from "./airtable";
 import { BOOKING_CONFIG, type BookingType, type FieldDef } from "@/lib/bookingFields";
 
 /** Form value shape: strings for scalars, string[] for multiselect. */
@@ -99,6 +99,108 @@ export async function saveBooking(input: {
           headers: authHeaders,
           body: JSON.stringify({ fields }),
         });
+    if (!res.ok) {
+      const text = await res.text();
+      return { ok: false, error: `Airtable ${res.status}: ${text.slice(0, 300)}` };
+    }
+    const saved = (await res.json()) as { id: string };
+    return { ok: true, id: saved.id };
+  } catch (err) {
+    return { ok: false, error: String(err) };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Linking an EXISTING booking onto a trip (attach + optionally place on a day)
+// ---------------------------------------------------------------------------
+
+type AnyRow = { id: string; fields: Record<string, unknown> };
+
+/** An existing booking the team can attach to this trip. */
+export type LinkableBooking = {
+  recordId: string;
+  type: BookingType;
+  title: string;
+  date: string | null;
+  time: string | null;
+  /** Trip codes this booking is already linked to (shown so the move is clear). */
+  otherTripCodes: string[];
+};
+
+// Quote-safe value for an Airtable formula string literal.
+function esc(s: string): string {
+  return s.replace(/["\\]/g, " ").trim();
+}
+
+/**
+ * Existing bookings of one type matching `query` by name, EXCLUDING any already
+ * on this trip (and cancelled ones). A name filter keeps the fetch tiny — we
+ * never load a whole booking table. Needs ≥2 query chars to run.
+ */
+export async function searchLinkableBookings(
+  type: BookingType,
+  tripCode: string,
+  query: string,
+): Promise<LinkableBooking[]> {
+  const cfg = BOOKING_CONFIG[type];
+  if (!cfg || !TOKEN) return [];
+  const q = esc(query);
+  if (q.length < 2) return [];
+  const { titleField, dateField, timeField } = cfg.link;
+
+  // Exclude bookings already on THIS trip. Bound the code with commas on both
+  // sides (and the joined list too) so one code can't substring-match another.
+  const formula = `AND(SEARCH(LOWER("${q}"), LOWER({${titleField}} & "")), NOT(FIND(",${esc(tripCode)},", "," & ARRAYJOIN({Trip ID}) & ",")), NOT(FIND("ancel", {Status} & "")))`;
+
+  const [rows, trips] = await Promise.all([
+    fetchAllPages<AnyRow>(cfg.tableId, formula),
+    loadTripRows(),
+  ]);
+  const codeById = new Map(trips.map((t) => [t.id, (t.fields["Trip ID"] ?? t.id) as string]));
+
+  return rows.slice(0, 30).map((r): LinkableBooking => {
+    const f = r.fields;
+    const rawTitle = f[titleField];
+    const title = typeof rawTitle === "string" && rawTitle.trim() ? rawTitle.trim() : cfg.label;
+    return {
+      recordId: r.id,
+      type,
+      title,
+      date: typeof f[dateField] === "string" ? (f[dateField] as string).slice(0, 10) : null,
+      time: timeField && typeof f[timeField] === "string" ? (f[timeField] as string) : null,
+      otherTripCodes: linkedIds(f["Trip ID"]).map((id) => codeById.get(id) ?? id),
+    };
+  });
+}
+
+/**
+ * Attach an existing booking to a trip by SETTING its Trip ID to this trip.
+ * The itinerary filters bookings with an exact `ARRAYJOIN({Trip ID})="code"`
+ * match, so a booking belongs to exactly one trip — a booking already on
+ * another trip is moved here (the picker shows its current trip first, and the
+ * search excludes anything already on this trip). When `date` is given, the
+ * booking is placed on that day; its time field is untouched, so a real
+ * reservation keeps its clock time.
+ */
+export async function linkBooking(input: {
+  type: BookingType;
+  recordId: string;
+  tripRecordId: string;
+  date?: string | null;
+}): Promise<SaveResult> {
+  const cfg = BOOKING_CONFIG[input.type];
+  if (!cfg) return { ok: false, error: "unknown booking type" };
+  if (!TOKEN) return { ok: false, error: "no Airtable token" };
+
+  const fields: Record<string, unknown> = { "Trip ID": [input.tripRecordId] };
+  if (input.date) fields[cfg.link.dateField] = input.date;
+
+  try {
+    const res = await fetch(api(`${cfg.tableId}/${input.recordId}`), {
+      method: "PATCH",
+      headers: authHeaders,
+      body: JSON.stringify({ fields }),
+    });
     if (!res.ok) {
       const text = await res.text();
       return { ok: false, error: `Airtable ${res.status}: ${text.slice(0, 300)}` };

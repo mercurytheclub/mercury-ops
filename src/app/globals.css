@@ -323,6 +323,68 @@ select.bk-input option { background: #0c0c0c; color: var(--mercury-white); }
 .gp-create { color: var(--mercury-blue); opacity: 0.9; }
 .gp-create strong { font-weight: 600; }
 
+/* ─── Link existing booking ────────────────────────────────────────────── */
+.link-existing-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: none;
+  border: 1px solid var(--mercury-rule-2);
+  border-radius: 999px;
+  cursor: pointer;
+  color: var(--mercury-white);
+  padding: 0.45rem 0.9rem;
+  font-size: 0.62rem;
+  opacity: 0.8;
+  white-space: nowrap;
+  transition: border-color 0.15s, color 0.15s, opacity 0.15s;
+}
+.link-existing-btn:hover { border-color: var(--mercury-blue); color: var(--mercury-blue); opacity: 1; }
+.link-existing-glyph { font-size: 0.85rem; line-height: 0; opacity: 0.85; }
+
+/* per-day menu: separator + the "link existing…" item */
+.day-add-sep { border: 0; border-top: 1px solid var(--mercury-rule); margin: 0.3rem 0.2rem; }
+.bk-menu-link { text-transform: none; opacity: 0.75; }
+
+/* search results (reuses .gp-menu / .gp-item) with a title + meta line */
+.lb-results { margin-top: 0.5rem; }
+.lb-item { display: flex; flex-direction: column; align-items: flex-start; gap: 0.15rem; }
+.lb-title { font-size: 0.92rem; }
+.lb-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-mono), monospace;
+  font-size: 0.62rem;
+  letter-spacing: 0.02em;
+  opacity: 0.6;
+}
+.lb-badge {
+  font-style: normal;
+  color: var(--mercury-blue);
+  opacity: 0.85;
+  border: 1px solid var(--mercury-rule-2);
+  border-radius: 999px;
+  padding: 0.05rem 0.4rem;
+}
+.lb-hint {
+  font-family: var(--font-mono), monospace;
+  font-size: 0.62rem;
+  letter-spacing: 0.02em;
+  opacity: 0.45;
+  margin: 0.5rem 0 0;
+}
+.lb-selected {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  width: 100%;
+  padding: 0.85rem 1rem;
+  border-left: 2px solid var(--mercury-blue);
+  background: rgba(82, 165, 211, 0.05);
+}
+
 /* ─── Toast (top-right) ────────────────────────────────────────────────── */
 .toast-wrap {
   position: fixed;

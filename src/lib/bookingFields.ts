@@ -37,6 +37,8 @@ export type BookingTypeConfig = {
   tableId: string;
   /** Default Status applied to newly created records. */
   defaultStatus?: { field: string; value: string };
+  /** Fields used to search + place an EXISTING booking when linking it to a trip. */
+  link: { titleField: string; dateField: string; timeField?: string };
   fields: FieldDef[];
 };
 
@@ -48,6 +50,7 @@ export const BOOKING_CONFIG: Record<BookingType, BookingTypeConfig> = {
     label: "restaurant",
     tableId: "tbl4o7RIr37vo8Uj5",
     defaultStatus: { field: "Status", value: "Active" },
+    link: { titleField: "Restaurant Name", dateField: "Reservation Date", timeField: "Reservation Time" },
     fields: [
       { name: "Restaurant Name", label: "Restaurant", kind: "text", placeholder: "e.g. Le Bernardin" },
       { name: "Cuisine", label: "Cuisine", kind: "text", half: true, placeholder: "e.g. French" },
@@ -70,6 +73,7 @@ export const BOOKING_CONFIG: Record<BookingType, BookingTypeConfig> = {
     label: "activity",
     tableId: "tbli8AU5hA12ROjmi",
     defaultStatus: { field: "Status", value: "Active" },
+    link: { titleField: "Activity Name", dateField: "Activity Date", timeField: "Activity Time" },
     fields: [
       { name: "Activity Name", label: "Activity", kind: "text", placeholder: "e.g. Private Acropolis Tour" },
       { name: "Activity Date", label: "Date", kind: "date", half: true },
@@ -94,6 +98,7 @@ export const BOOKING_CONFIG: Record<BookingType, BookingTypeConfig> = {
     label: "car service",
     tableId: "tblDLF5H4wuOmrAPq",
     defaultStatus: { field: "Status", value: "Active" },
+    link: { titleField: "Supplier", dateField: "Pick Up Date", timeField: "Pick Up Time" },
     fields: [
       { name: "Service Type", label: "Service type", kind: "multiselect", options: ["Airport Arrival", "Airport Departure", "Train Station Arrival", "Train Station Departure", "Point to Point", "Hourly (At Disposal)"] },
       { name: "Supplier", label: "Supplier", kind: "text", placeholder: "e.g. Blacklane, Empire CLS, local DMC…" },
@@ -124,6 +129,7 @@ export const BOOKING_CONFIG: Record<BookingType, BookingTypeConfig> = {
     label: "airport greeter",
     tableId: "tblLS8Qc9xarbvtW4",
     defaultStatus: { field: "Status", value: "Active" },
+    link: { titleField: "Supplier", dateField: "Service Date", timeField: "Service Time" },
     fields: [
       { name: "Service Type", label: "Service type", kind: "select", half: true, options: ["Arrival", "Departure", "Connection"] },
       { name: "Associated Flight", label: "Flight", kind: "text", half: true, placeholder: "e.g. AA123" },
