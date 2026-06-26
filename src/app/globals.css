@@ -53,6 +53,21 @@ a { color: var(--mercury-blue); text-decoration: none; }
 }
 .bk-trigger-add:hover { opacity: 1; border-color: var(--mercury-blue); color: var(--mercury-blue); }
 
+/* ─── Reservation internal details (label → value) ─────────────────────── */
+.bk-details {
+  display: grid;
+  grid-template-columns: minmax(6rem, 8.5rem) 1fr;
+  gap: 0.3rem 0.85rem;
+}
+.bk-d-label { opacity: 0.42; font-size: 0.6rem; line-height: 1.5; align-self: start; }
+.bk-d-value { opacity: 0.88; font-size: 0.85rem; line-height: 1.5; overflow-wrap: anywhere; }
+/* On narrow screens, stack label above value so the value gets full width. */
+@media (max-width: 600px) {
+  .bk-details { grid-template-columns: 1fr; gap: 0; }
+  .bk-d-label { margin-top: 0.5rem; }
+  .bk-d-label:first-child { margin-top: 0; }
+}
+
 /* ─── Per-day "+ add" + type menu ──────────────────────────────────────── */
 .day-add { position: relative; flex-shrink: 0; }
 .day-add-btn {

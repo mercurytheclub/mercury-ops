@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import { loadItinerary } from "@/server/itinerary";
 import type { Reservation } from "@/server/itinerary";
 import { color } from "@brand";
@@ -57,7 +58,7 @@ function timeOf(iso: string | null): string {
 function ReservationCard({ r, tripCode, tripName }: { r: Reservation; tripCode: string; tripName: string }) {
   const time = timeOf(r.startAt);
   const a = r.admin;
-  const hasAdmin = a.cost.length || a.supplier || a.contact || a.locator || a.notes;
+  const hasAdmin = a.cost.length > 0 || a.details.length > 0;
   const recordId = r.id.slice(r.category.length + 1); // "restaurant-recXXX" → "recXXX"
   return (
     <div style={{ display: "grid", gridTemplateColumns: "5.5rem 1fr", gap: "0 1.25rem", padding: "1.1rem 0" }}>
@@ -97,10 +98,16 @@ function ReservationCard({ r, tripCode, tripName }: { r: Reservation; tripCode: 
                 <span style={{ fontFamily: "var(--font-mono), monospace" }}>{fmtMoney(c.amount, c.currency)}</span>
               </span>
             ))}
-            {a.supplier ? <AdminRow k="supplier" v={a.supplier} /> : null}
-            {a.contact ? <AdminRow k="contact" v={a.contact} /> : null}
-            {a.locator ? <AdminRow k="locator" v={a.locator} /> : null}
-            {a.notes ? <AdminRow k="notes" v={a.notes} /> : null}
+            {a.details.length ? (
+              <div className="bk-details" style={{ marginTop: a.cost.length ? "0.35rem" : 0 }}>
+                {a.details.map((d, i) => (
+                  <Fragment key={i}>
+                    <span className="bk-d-label label">{d.label}</span>
+                    <span className="bk-d-value">{d.value}</span>
+                  </Fragment>
+                ))}
+              </div>
+            ) : null}
           </div>
         ) : null}
       </div>
@@ -108,14 +115,6 @@ function ReservationCard({ r, tripCode, tripName }: { r: Reservation; tripCode: 
   );
 }
 
-function AdminRow({ k, v }: { k: string; v: string }) {
-  return (
-    <span style={{ fontSize: "0.85rem", display: "flex", gap: "0.6rem" }}>
-      <span className="label" style={{ opacity: 0.45, fontSize: "0.62rem", minWidth: "4.5rem" }}>{k}</span>
-      <span style={{ opacity: 0.85 }}>{v}</span>
-    </span>
-  );
-}
 
 export default async function TripPage({ params }: { params: Promise<{ tripCode: string }> }) {
   const { tripCode } = await params;

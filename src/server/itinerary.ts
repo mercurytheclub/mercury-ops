@@ -34,15 +34,15 @@ export type Category = "flight" | "hotel" | "car" | "restaurant" | "activity" | 
 
 export type CostLine = { label: string; amount: number; currency: string };
 
-/** Internal, ops-only block. Never shown in the guest app. */
+/** One labelled field shown in the internal panel. */
+export type Detail = { label: string; value: string };
+
+/** Internal, ops-only block — the full picture for a booking. Never guest-facing. */
 export type AdminBlock = {
+  /** Money lines (right-aligned, currency-formatted). */
   cost: CostLine[];
-  supplier: string | null;
-  /** Driver/operator contact — name and/or phone. */
-  contact: string | null;
-  /** PNR / record locator / ticket / confirmation that's internal-leaning. */
-  locator: string | null;
-  notes: string | null;
+  /** Every other relevant field as label → value (supplier, contact, refs, …). */
+  details: Detail[];
 };
 
 export type Reservation = {
@@ -106,6 +106,53 @@ const contactOf = (name: unknown, phone: unknown): string | null => {
 const text = (v: unknown): string | null =>
   typeof v === "string" && v.trim() ? v.trim() : null;
 
+// ── Detail builders ─────────────────────────────────────────────────────────
+// Turn an Airtable value into a display string; empty/false → "" (dropped).
+function fmtVal(v: unknown): string {
+  if (v == null || v === false) return "";
+  if (v === true) return "Yes";
+  if (Array.isArray(v)) return v.filter((x) => typeof x === "string" && x.trim()).join(", ");
+  if (typeof v === "number") return Number.isFinite(v) ? String(v) : "";
+  return String(v).trim();
+}
+
+/** Build a details list from [label, value] pairs, dropping empties. */
+function detailsOf(...entries: [string, unknown][]): Detail[] {
+  const out: Detail[] = [];
+  for (const [label, v] of entries) {
+    const s = fmtVal(v);
+    if (s) out.push({ label, value: s });
+  }
+  return out;
+}
+
+const joinDot = (...parts: unknown[]): string =>
+  parts.map((p) => fmtVal(p)).filter(Boolean).join(" · ");
+
+/** "Mon D · 9:00 AM" from a date + free-text time (either may be empty). */
+function whenStr(date: unknown, time: unknown): string {
+  const d = typeof date === "string" ? fmtDateShort(date) : "";
+  return [d, fmtVal(time)].filter(Boolean).join(" · ");
+}
+
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+function fmtDateShort(d: string): string {
+  const s = d.slice(0, 10).split("-");
+  if (s.length !== 3) return d;
+  const m = MONTHS[parseInt(s[1], 10) - 1];
+  return m ? `${m} ${parseInt(s[2], 10)}` : d;
+}
+
+/** Whole nights between two YYYY-MM-DD dates (for stays). */
+function nightsBetween(a: unknown, b: unknown): string {
+  if (typeof a !== "string" || typeof b !== "string") return "";
+  const t1 = new Date(a.slice(0, 10) + "T00:00:00Z").getTime();
+  const t2 = new Date(b.slice(0, 10) + "T00:00:00Z").getTime();
+  if (!Number.isFinite(t1) || !Number.isFinite(t2) || t2 <= t1) return "";
+  const n = Math.round((t2 - t1) / 86_400_000);
+  return `${n} night${n === 1 ? "" : "s"}`;
+}
+
 /** A category loader: reservations for ONE trip (filtered server-side by Trip ID). */
 type Loader = (guests: Map<string, string>, tripCode: string) => Promise<Reservation[]>;
 
@@ -167,6 +214,11 @@ type FlightRow = {
     "Taxes & Fees"?: number;
     "Net Cost (Internal Only)"?: number;
     "Total Fare"?: number;
+    "Special Meal"?: string;
+    "Wheelchair Service"?: boolean;
+    "Pet in Cabin"?: boolean;
+    "Pet Breed"?: string;
+    "Pet Weight"?: string;
     "Status"?: string;
     "Dummy Flight"?: boolean;
   };
@@ -200,12 +252,22 @@ const loadFlights: Loader = async (guests, tripCode) => {
           cost: costLines(
             ["Ticket cost", f["Ticket Cost"]],
             ["Taxes & fees", f["Taxes & Fees"]],
+            ["Total fare", f["Total Fare"]],
             ["Net cost (internal)", f["Net Cost (Internal Only)"]],
           ),
-          supplier: null,
-          contact: null,
-          locator: text(f["Record Locator"]) ?? text(f["GDS PNR"]) ?? text(f["Ticket Number"]),
-          notes: f["Seat Assignment"] ? `Seat ${f["Seat Assignment"]}` : null,
+          details: detailsOf(
+            ["Departs", whenStr(f["Flight Departure Date"], f["Flight Departure Time"])],
+            ["Arrives", whenStr(f["Flight Arrival Date"], f["Flight Arrival Time"])],
+            ["Cabin", f["Cabin"]],
+            ["Seat", f["Seat Assignment"]],
+            ["Record locator", f["Record Locator"]],
+            ["GDS PNR", f["GDS PNR"]],
+            ["Ticket #", f["Ticket Number"]],
+            ["Special meal", f["Special Meal"]],
+            ["Wheelchair", f["Wheelchair Service"]],
+            ["Pet in cabin", f["Pet in Cabin"] ? joinDot(f["Pet Breed"], f["Pet Weight"]) || true : ""],
+            ["Status", f["Status"]],
+          ),
         },
         _tripRecordId: tripId,
       };
@@ -228,11 +290,21 @@ type HotelRow = {
     "Check In Date"?: string;
     "Check In Time"?: string;
     "Check Out Date"?: string;
+    "Number of Guests"?: number;
     "Confirmation Number"?: string;
     "Booking Currency"?: string;
     "BC - Grand Total"?: number;
     "GPC - Grand Total"?: number;
     "Pre-Tax Subtotal"?: number;
+    "Base Rate"?: number;
+    "Guest Loyalty Number"?: string;
+    "Agent Loyalty ID"?: string;
+    "Early Check-In"?: string;
+    "Late Check-Out"?: string;
+    "Crib"?: string;
+    "Rollaway Bed"?: string;
+    "Connecting Rooms"?: string;
+    "Accessible Room"?: string;
     "Cancellation Policy"?: string;
     "Status"?: string;
     "Trip ID"?: LinkedRecord[];
@@ -272,11 +344,27 @@ const loadHotels: Loader = async (guests, tripCode) => {
           ["Grand total (booking ccy)", f["BC - Grand Total"], cur],
           ["Grand total (guest price)", f["GPC - Grand Total"], "USD"],
           ["Pre-tax subtotal", f["Pre-Tax Subtotal"], cur],
+          ["Base rate", f["Base Rate"], cur],
         ),
-        supplier: hotelName,
-        contact: null,
-        locator: text(f["Confirmation Number"]),
-        notes: text(f["Cancellation Policy"]),
+        details: detailsOf(
+          ["Hotel", hotelName],
+          ["Check-in", whenStr(f["Check In Date"], f["Check In Time"])],
+          ["Check-out", fmtDateShort(text(f["Check Out Date"]) ?? "")],
+          ["Nights", nightsBetween(f["Check In Date"], f["Check Out Date"])],
+          ["Room", text(f["Room Category"])],
+          ["Guests", f["Number of Guests"]],
+          ["Currency", text(f["Booking Currency"])],
+          ["Confirmation #", text(f["Confirmation Number"])],
+          ["Guest loyalty #", text(f["Guest Loyalty Number"])],
+          ["Agent loyalty ID", text(f["Agent Loyalty ID"])],
+          ["Early check-in", text(f["Early Check-In"])],
+          ["Late check-out", text(f["Late Check-Out"])],
+          ["Connecting rooms", text(f["Connecting Rooms"])],
+          ["Crib", text(f["Crib"])],
+          ["Rollaway bed", text(f["Rollaway Bed"])],
+          ["Accessible room", text(f["Accessible Room"])],
+          ["Cancellation policy", text(f["Cancellation Policy"])],
+        ),
       },
       _tripRecordId: tripId,
     });
@@ -294,6 +382,8 @@ type VillaRow = {
     "Property Name"?: string;
     "Property Type"?: string;
     "Address"?: string;
+    "Bedrooms"?: number;
+    "Sleeps"?: number;
     "Check In Date"?: string;
     "Check Out Date"?: string;
     "Confirmation Number"?: string;
@@ -301,6 +391,12 @@ type VillaRow = {
     "Base Nightly Rate"?: number;
     "Pre-Tax Subtotal"?: number;
     "Grand Total"?: number;
+    "Crib"?: string;
+    "Chef"?: string;
+    "Housekeeping"?: string;
+    "Private Driver"?: string;
+    "Butler Service"?: string;
+    "Breakfast"?: string;
     "Check-in Instructions"?: string;
     "Cancellation Policy"?: string;
     "Status"?: string;
@@ -336,10 +432,24 @@ const loadVillas: Loader = async (guests, tripCode) => {
           ["Pre-tax subtotal", f["Pre-Tax Subtotal"], cur],
           ["Grand total", f["Grand Total"], cur],
         ),
-        supplier: text(f["Property Name"]),
-        contact: null,
-        locator: text(f["Confirmation Number"]),
-        notes: text(f["Check-in Instructions"]) ?? text(f["Cancellation Policy"]),
+        details: detailsOf(
+          ["Check-in", fmtDateShort(text(f["Check In Date"]) ?? "")],
+          ["Check-out", fmtDateShort(text(f["Check Out Date"]) ?? "")],
+          ["Nights", nightsBetween(f["Check In Date"], f["Check Out Date"])],
+          ["Bedrooms", f["Bedrooms"]],
+          ["Sleeps", f["Sleeps"]],
+          ["Address", text(f["Address"])],
+          ["Currency", text(f["Currency"])],
+          ["Confirmation #", text(f["Confirmation Number"])],
+          ["Chef", text(f["Chef"])],
+          ["Housekeeping", text(f["Housekeeping"])],
+          ["Private driver", text(f["Private Driver"])],
+          ["Butler service", text(f["Butler Service"])],
+          ["Breakfast", text(f["Breakfast"])],
+          ["Crib", text(f["Crib"])],
+          ["Check-in instructions", text(f["Check-in Instructions"])],
+          ["Cancellation policy", text(f["Cancellation Policy"])],
+        ),
       },
       _tripRecordId: tripId,
     });
@@ -365,14 +475,25 @@ type CarRow = {
     "Drop Off (Short)"?: string;
     "Pick Up Date"?: string;
     "Pick Up Time"?: string;
+    "Drop Off Address"?: string;
     "Drop Off Date"?: string;
     "Drop Off Time"?: string;
+    "Duration"?: string;
+    "Sedan"?: number;
+    "SUV"?: number;
+    "Sprinter Van"?: number;
+    "Viano"?: number;
+    "Hi-Ace"?: number;
+    "Alphard"?: number;
+    "Luggage Van"?: number;
     "Status"?: string;
     "Trip ID"?: LinkedRecord[];
     "Lead Guest"?: LinkedRecord[];
     "Companions"?: LinkedRecord[];
   };
 };
+
+const CAR_VEHICLES = ["Sedan", "SUV", "Sprinter Van", "Viano", "Hi-Ace", "Alphard", "Luggage Van"] as const;
 
 const loadCars: Loader = async (guests, tripCode) => {
   const rows = await fetchAllPages<CarRow>("tblDLF5H4wuOmrAPq", tripFilter(tripCode));
@@ -384,6 +505,7 @@ const loadCars: Loader = async (guests, tripCode) => {
     const startAt = combineDateTime(f["Pick Up Date"], f["Pick Up Time"]);
     if (!tripId || !startAt) continue;
     const route = [text(f["Pick Up (Short)"]), text(f["Drop Off (Short)"])].filter(Boolean);
+    const vehicles = CAR_VEHICLES.filter((v) => Number(f[v]) > 0).map((v) => `${f[v]}× ${v}`).join(", ");
     out.push({
       id: `car-${row.id}`,
       category: "car",
@@ -396,10 +518,15 @@ const loadCars: Loader = async (guests, tripCode) => {
       confirmation: text(f["Confirmation #"]),
       admin: {
         cost: [],
-        supplier: text(f["Supplier"]),
-        contact: contactOf(f["Driver Name"], f["Driver Phone"]),
-        locator: text(f["Confirmation #"]),
-        notes: null,
+        details: detailsOf(
+          ["Supplier", text(f["Supplier"])],
+          ["Driver", contactOf(f["Driver Name"], f["Driver Phone"])],
+          ["Pick-up", joinDot(whenStr(f["Pick Up Date"], f["Pick Up Time"]), text(f["Pick Up Address"]))],
+          ["Drop-off", joinDot(whenStr(f["Drop Off Date"], f["Drop Off Time"]), text(f["Drop Off Address"]))],
+          ["Duration", text(f["Duration"])],
+          ["Vehicles", vehicles],
+          ["Confirmation #", text(f["Confirmation #"])],
+        ),
       },
       _tripRecordId: tripId,
     });
@@ -419,6 +546,9 @@ type RestaurantRow = {
     "Address"?: string;
     "Reservation Date"?: string;
     "Reservation Time"?: string;
+    "Number of Guests"?: number;
+    "Distance"?: string;
+    "Status Detail"?: string;
     "Confirmation Number"?: string;
     "Notes"?: string;
     "Status"?: string;
@@ -454,10 +584,16 @@ const loadRestaurants: Loader = async (guests, tripCode) => {
       confirmation: text(f["Confirmation Number"]),
       admin: {
         cost: [],
-        supplier: name,
-        contact: null,
-        locator: text(f["Confirmation Number"]),
-        notes: text(f["Notes"]),
+        details: detailsOf(
+          ["Restaurant", name],
+          ["Cuisine", text(f["Cuisine"])],
+          ["Party size", f["Number of Guests"]],
+          ["Address", text(f["Address"])],
+          ["Distance", text(f["Distance"])],
+          ["Booking status", text(f["Status Detail"])],
+          ["Confirmation #", text(f["Confirmation Number"])],
+          ["Notes", text(f["Notes"])],
+        ),
       },
       _tripRecordId: tripId,
     });
@@ -481,9 +617,10 @@ type ActivityRow = {
     "Notes"?: string;
     "Activity Date"?: string;
     "Activity Time"?: string;
+    "End Time"?: string;
+    "Status"?: string;
     "Contact Name"?: string;
     "Contact Phone"?: string;
-    "Status"?: string;
     "Trip ID"?: LinkedRecord[];
     "Activity"?: LinkedRecord[];
     "Lead Guest"?: LinkedRecord[];
@@ -515,10 +652,17 @@ const loadActivities: Loader = async (guests, tripCode) => {
       confirmation: text(f["Confirmation Number"]),
       admin: {
         cost: [],
-        supplier: text(f["Operator"]),
-        contact: contactOf(f["Contact Name"], f["Contact Phone"]),
-        locator: text(f["Confirmation Number"]),
-        notes: text(f["Notes"]) ?? text(f["Description"]),
+        details: detailsOf(
+          ["Operator", text(f["Operator"])],
+          ["Contact", contactOf(f["Contact Name"], f["Contact Phone"])],
+          ["Starts", whenStr(f["Activity Date"], f["Activity Time"])],
+          ["Ends", fmtVal(f["End Time"])],
+          ["Duration", text(f["Duration"])],
+          ["Meeting point", text(f["Meeting Point"])],
+          ["Confirmation #", text(f["Confirmation Number"])],
+          ["Description", text(f["Description"])],
+          ["Notes", text(f["Notes"])],
+        ),
       },
       _tripRecordId: tripId,
     });
@@ -539,6 +683,7 @@ type GreeterRow = {
     "Service Time"?: string;
     "Greeter Name"?: string;
     "Greeter Phone"?: string;
+    "Greeter Email"?: string;
     "Supplier"?: string;
     "Confirmation #"?: string;
     "PNR"?: string;
@@ -572,10 +717,17 @@ const loadGreeters: Loader = async (guests, tripCode) => {
       confirmation: text(f["Confirmation #"]),
       admin: {
         cost: [],
-        supplier: text(f["Supplier"]),
-        contact: contactOf(f["Greeter Name"], f["Greeter Phone"]),
-        locator: text(f["Confirmation #"]) ?? text(f["PNR"]),
-        notes: text(f["Notes"]),
+        details: detailsOf(
+          ["Service", svc],
+          ["Flight", text(f["Associated Flight"])],
+          ["When", whenStr(f["Service Date"], f["Service Time"])],
+          ["Supplier", text(f["Supplier"])],
+          ["Greeter", contactOf(f["Greeter Name"], f["Greeter Phone"])],
+          ["Greeter email", text(f["Greeter Email"])],
+          ["Confirmation #", text(f["Confirmation #"])],
+          ["PNR", text(f["PNR"])],
+          ["Notes", text(f["Notes"])],
+        ),
       },
       _tripRecordId: tripId,
     });
