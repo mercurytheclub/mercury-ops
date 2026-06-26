@@ -2,7 +2,13 @@ import { loadItinerary } from "@/server/itinerary";
 import type { Reservation } from "@/server/itinerary";
 import { color } from "@brand";
 import { Wordmark } from "@/app/components/Wordmark";
+import { BookingEditor } from "@/app/components/BookingEditor";
+import { BOOKING_TYPES, type BookingType } from "@/lib/bookingFields";
 import { notFound } from "next/navigation";
+
+// Reservation categories that map 1:1 to an editable booking type.
+const EDITABLE = new Set<Reservation["category"]>(["restaurant", "activity", "car", "greeter"]);
+const isEditable = (c: Reservation["category"]): c is BookingType => EDITABLE.has(c);
 
 // On-demand ISR: a trip renders the first time it's opened, then is served from
 // cache and revalidated in the background every 60s. Each render only fetches
@@ -16,6 +22,7 @@ const CATEGORY_LABEL: Record<Reservation["category"], string> = {
   car: "CAR SERVICE",
   restaurant: "RESTAURANT",
   activity: "ACTIVITY",
+  greeter: "AIRPORT GREETER",
 };
 
 function fmtMoney(amount: number, currency: string): string {
@@ -46,17 +53,23 @@ function timeOf(iso: string | null): string {
   return `${h}:${m[2]} ${ampm}`;
 }
 
-function ReservationCard({ r }: { r: Reservation }) {
+function ReservationCard({ r, tripCode }: { r: Reservation; tripCode: string }) {
   const time = timeOf(r.startAt);
   const a = r.admin;
   const hasAdmin = a.cost.length || a.supplier || a.contact || a.locator || a.notes;
+  const recordId = r.id.slice(r.category.length + 1); // "restaurant-recXXX" → "recXXX"
   return (
     <div style={{ display: "grid", gridTemplateColumns: "5.5rem 1fr", gap: "0 1.25rem", padding: "1.1rem 0" }}>
       <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: "0.8rem", opacity: 0.6, paddingTop: "0.15rem" }}>
         {time || "—"}
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem" }}>
-        <span className="label" style={{ color: color.blue, opacity: 0.9 }}>{CATEGORY_LABEL[r.category]}</span>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "1rem" }}>
+          <span className="label" style={{ color: color.blue, opacity: 0.9 }}>{CATEGORY_LABEL[r.category]}</span>
+          {isEditable(r.category) ? (
+            <BookingEditor variant="edit" type={r.category} recordId={recordId} tripCode={tripCode} />
+          ) : null}
+        </div>
         <span style={{ fontSize: "1.1rem" }}>{r.title}</span>
         {r.subtitle ? <span style={{ opacity: 0.7, fontSize: "0.9rem" }}>{r.subtitle}</span> : null}
         {r.location ? <span style={{ opacity: 0.55, fontSize: "0.85rem" }}>{r.location}</span> : null}
@@ -148,6 +161,14 @@ export default async function TripPage({ params }: { params: Promise<{ tripCode:
         ) : null}
       </header>
 
+      {/* Add-booking toolbar — create new editable bookings on this trip. */}
+      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "0.6rem" }}>
+        <span className="label" style={{ opacity: 0.4, fontSize: "0.6rem", marginRight: "0.25rem" }}>add</span>
+        {BOOKING_TYPES.map((t) => (
+          <BookingEditor key={t} variant="add" type={t} tripCode={it.tripCode} tripRecordId={it.tripRecordId} />
+        ))}
+      </div>
+
       <hr className="hairline" />
 
       {it.days.map((day) => (
@@ -160,7 +181,7 @@ export default async function TripPage({ params }: { params: Promise<{ tripCode:
           ) : (
             day.reservations.map((r, i) => (
               <div key={r.id}>
-                <ReservationCard r={r} />
+                <ReservationCard r={r} tripCode={it.tripCode} />
                 {i < day.reservations.length - 1 ? <hr className="hairline" style={{ opacity: 0.35 }} /> : null}
               </div>
             ))

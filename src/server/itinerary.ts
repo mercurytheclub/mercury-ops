@@ -30,7 +30,7 @@ import {
 // Types
 // ---------------------------------------------------------------------------
 
-export type Category = "flight" | "hotel" | "car" | "restaurant" | "activity" | "villa";
+export type Category = "flight" | "hotel" | "car" | "restaurant" | "activity" | "villa" | "greeter";
 
 export type CostLine = { label: string; amount: number; currency: string };
 
@@ -65,6 +65,8 @@ export type ItineraryDay = { date: string; reservations: Reservation[] };
 
 export type ItineraryDetail = {
   tripCode: string;
+  /** Airtable record id of the Trip — needed to link newly created bookings. */
+  tripRecordId: string;
   name: string;
   startDate: string;
   endDate: string;
@@ -524,6 +526,63 @@ const loadActivities: Loader = async (guests, tripCode) => {
   return out;
 };
 
+// ---------------------------------------------------------------------------
+// Airport greeters
+// ---------------------------------------------------------------------------
+
+type GreeterRow = {
+  id: string;
+  fields: {
+    "Service Type"?: string;
+    "Associated Flight"?: string;
+    "Service Date"?: string;
+    "Service Time"?: string;
+    "Greeter Name"?: string;
+    "Greeter Phone"?: string;
+    "Supplier"?: string;
+    "Confirmation #"?: string;
+    "PNR"?: string;
+    "Notes"?: string;
+    "Status"?: string;
+    "Trip ID"?: LinkedRecord[];
+    "Lead Guest"?: LinkedRecord[];
+    "Companions"?: LinkedRecord[];
+  };
+};
+
+const loadGreeters: Loader = async (guests, tripCode) => {
+  const rows = await fetchAllPages<GreeterRow>("tblLS8Qc9xarbvtW4", tripFilter(tripCode));
+  const out: Reservation[] = [];
+  for (const row of rows) {
+    const f = row.fields;
+    if (isCancelled(f["Status"])) continue;
+    const tripId = linkedIds(f["Trip ID"])[0];
+    const startAt = combineDateTime(f["Service Date"], f["Service Time"]);
+    if (!tripId || !startAt) continue;
+    const svc = text(f["Service Type"]);
+    out.push({
+      id: `greeter-${row.id}`,
+      category: "greeter",
+      startAt,
+      endAt: null,
+      title: text(f["Supplier"]) ?? "Airport greeter",
+      subtitle: [svc, text(f["Associated Flight"])].filter(Boolean).join(" · ") || null,
+      location: null,
+      guests: resolveGuestNames(guests, f["Lead Guest"], f["Companions"]),
+      confirmation: text(f["Confirmation #"]),
+      admin: {
+        cost: [],
+        supplier: text(f["Supplier"]),
+        contact: contactOf(f["Greeter Name"], f["Greeter Phone"]),
+        locator: text(f["Confirmation #"]) ?? text(f["PNR"]),
+        notes: text(f["Notes"]),
+      },
+      _tripRecordId: tripId,
+    });
+  }
+  return out;
+};
+
 // Every category loader. Add a new booking type here and it joins the itinerary.
 const CATEGORY_LOADERS: Loader[] = [
   loadFlights,
@@ -532,6 +591,7 @@ const CATEGORY_LOADERS: Loader[] = [
   loadCars,
   loadRestaurants,
   loadActivities,
+  loadGreeters,
 ];
 
 // Reservations for ONE trip. Each category is fetched server-side filtered to
@@ -612,6 +672,7 @@ function buildItinerary(
 
   return {
     tripCode,
+    tripRecordId: trip.id,
     name: f["External Trip Name"] ?? tripCode,
     startDate,
     endDate,
