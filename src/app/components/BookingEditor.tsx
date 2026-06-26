@@ -29,9 +29,13 @@ type Props = {
 
 function emptyValues(type: BookingType, initialDate?: string): BookingValues {
   const out: BookingValues = {};
-  const dateField = BOOKING_CONFIG[type].fields.find((f) => f.kind === "date")?.name;
-  for (const f of BOOKING_CONFIG[type].fields) out[f.name] = f.kind === "multiselect" ? [] : "";
-  if (initialDate && dateField) out[dateField] = initialDate;
+  for (const f of BOOKING_CONFIG[type].fields) {
+    if (f.kind === "multiselect") out[f.name] = [];
+    // Pre-fill EVERY date field with the day being added to (e.g. car service
+    // pick-up AND drop-off both default to that day).
+    else if (f.kind === "date" && initialDate) out[f.name] = initialDate;
+    else out[f.name] = "";
+  }
   return out;
 }
 
