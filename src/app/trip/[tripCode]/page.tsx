@@ -113,16 +113,16 @@ export default async function TripPage({ params }: { params: Promise<{ tripCode:
 
   return (
     <main style={{ minHeight: "100vh", padding: "6vh 6vw", display: "flex", flexDirection: "column", gap: "2rem", maxWidth: 920, margin: "0 auto" }}>
-      {/* Nav bar: 3 columns so the back action (left) and centered logo never
-          overlap — the empty right column balances the grid to keep it centered.
-          paddingBottom gives the masthead the same breathing room as the All
-          Trips page before the content begins. */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", gap: "1.5rem", paddingBottom: "3rem" }}>
-        <a href="/" className="label" style={{ justifySelf: "start", opacity: 0.6, whiteSpace: "nowrap" }}>← all trips</a>
-        <a href="/" aria-label="Back to all trips" style={{ display: "flex", justifySelf: "center" }}>
+      {/* Masthead mirrors the landing page: centered logo, then a control row
+          beneath it. On the landing page that row holds the search (right-
+          aligned); here it holds the back link (left-aligned, same row position). */}
+      <header style={{ display: "flex", justifyContent: "center", paddingBottom: "0.5rem" }}>
+        <a href="/" aria-label="Back to all trips" style={{ display: "flex" }}>
           <Wordmark size={30} />
         </a>
-        <span aria-hidden />
+      </header>
+      <div style={{ display: "flex", justifyContent: "flex-start", alignItems: "center", minHeight: "1.9rem", paddingBottom: "1.5rem" }}>
+        <a href="/" className="label" style={{ opacity: 0.6, whiteSpace: "nowrap" }}>← all trips</a>
       </div>
       <header style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
         <h1 style={{ margin: 0, fontSize: "2rem", fontWeight: 400 }}>{it.name}</h1>
