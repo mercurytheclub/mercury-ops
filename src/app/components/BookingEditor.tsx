@@ -11,6 +11,7 @@ const ACCENT = "#52A5D3";
 type Props = {
   type: BookingType;
   tripCode: string;
+  tripName?: string;
   /** edit: existing record. add: new record linked to tripRecordId. */
   variant: "edit" | "add";
   recordId?: string;
@@ -23,7 +24,7 @@ function emptyValues(type: BookingType): BookingValues {
   return out;
 }
 
-export function BookingEditor({ type, tripCode, variant, recordId, tripRecordId }: Props) {
+export function BookingEditor({ type, tripCode, tripName, variant, recordId, tripRecordId }: Props) {
   const cfg = BOOKING_CONFIG[type];
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -70,6 +71,7 @@ export function BookingEditor({ type, tripCode, variant, recordId, tripRecordId 
         recordId: variant === "edit" ? recordId : null,
         tripRecordId: variant === "add" ? tripRecordId : null,
         tripCode,
+        tripName,
         values,
       });
       if (res.ok) {

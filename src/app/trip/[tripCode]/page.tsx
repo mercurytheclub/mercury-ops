@@ -53,7 +53,7 @@ function timeOf(iso: string | null): string {
   return `${h}:${m[2]} ${ampm}`;
 }
 
-function ReservationCard({ r, tripCode }: { r: Reservation; tripCode: string }) {
+function ReservationCard({ r, tripCode, tripName }: { r: Reservation; tripCode: string; tripName: string }) {
   const time = timeOf(r.startAt);
   const a = r.admin;
   const hasAdmin = a.cost.length || a.supplier || a.contact || a.locator || a.notes;
@@ -67,7 +67,7 @@ function ReservationCard({ r, tripCode }: { r: Reservation; tripCode: string }) 
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "1rem" }}>
           <span className="label" style={{ color: color.blue, opacity: 0.9 }}>{CATEGORY_LABEL[r.category]}</span>
           {isEditable(r.category) ? (
-            <BookingEditor variant="edit" type={r.category} recordId={recordId} tripCode={tripCode} />
+            <BookingEditor variant="edit" type={r.category} recordId={recordId} tripCode={tripCode} tripName={tripName} />
           ) : null}
         </div>
         <span style={{ fontSize: "1.1rem" }}>{r.title}</span>
@@ -165,7 +165,7 @@ export default async function TripPage({ params }: { params: Promise<{ tripCode:
       <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "0.6rem" }}>
         <span className="label" style={{ opacity: 0.4, fontSize: "0.6rem", marginRight: "0.25rem" }}>add</span>
         {BOOKING_TYPES.map((t) => (
-          <BookingEditor key={t} variant="add" type={t} tripCode={it.tripCode} tripRecordId={it.tripRecordId} />
+          <BookingEditor key={t} variant="add" type={t} tripCode={it.tripCode} tripName={it.name} tripRecordId={it.tripRecordId} />
         ))}
       </div>
 
@@ -181,7 +181,7 @@ export default async function TripPage({ params }: { params: Promise<{ tripCode:
           ) : (
             day.reservations.map((r, i) => (
               <div key={r.id}>
-                <ReservationCard r={r} tripCode={it.tripCode} />
+                <ReservationCard r={r} tripCode={it.tripCode} tripName={it.name} />
                 {i < day.reservations.length - 1 ? <hr className="hairline" style={{ opacity: 0.35 }} /> : null}
               </div>
             ))
