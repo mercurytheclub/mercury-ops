@@ -4,6 +4,7 @@ import { color } from "@brand";
 import { Wordmark } from "@/app/components/Wordmark";
 import { BookingEditor } from "@/app/components/BookingEditor";
 import { DayAdd } from "@/app/components/DayAdd";
+import { LinkBookingEditor } from "@/app/components/LinkBookingEditor";
 import { type BookingType } from "@/lib/bookingFields";
 import { notFound } from "next/navigation";
 
@@ -135,7 +136,7 @@ export default async function TripPage({ params }: { params: Promise<{ tripCode:
           <Wordmark size={30} />
         </a>
       </header>
-      <div style={{ display: "flex", justifyContent: "flex-start", alignItems: "center", minHeight: "1.9rem", paddingBottom: "1.5rem" }}>
+      <div style={{ display: "flex", justifyContent: "flex-start", alignItems: "center", minHeight: "1.9rem", paddingBottom: "3.25rem" }}>
         <a href="/" className="label" style={{ opacity: 0.6, whiteSpace: "nowrap" }}>← all trips</a>
       </div>
       <header style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
@@ -161,6 +162,12 @@ export default async function TripPage({ params }: { params: Promise<{ tripCode:
           </div>
         ) : null}
       </header>
+
+      {/* Itinerary toolbar — trip-level "link existing booking" (per-day "+ add"
+          and per-day "link existing…" live next to each date below). */}
+      <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center" }}>
+        <LinkBookingEditor tripCode={it.tripCode} tripName={it.name} tripRecordId={it.tripRecordId} />
+      </div>
 
       <hr className="hairline" />
 
