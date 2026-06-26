@@ -26,7 +26,11 @@ export function MercuryLoader({ fading = false }: { fading?: boolean }) {
         loop
         playsInline
         preload="auto"
-        style={{ width: "min(46vw, 230px)", height: "auto", display: "block" }}
+        // The clip is a white wordmark on a pure-black (#000) frame; the stage is
+        // #070707, so the raw video reads as a slightly-darker square. `screen`
+        // blends pure black into the backdrop (black → transparent) while keeping
+        // the white logo, so the frame disappears into the stage seamlessly.
+        style={{ width: "min(46vw, 230px)", height: "auto", display: "block", mixBlendMode: "screen" }}
       />
     </div>
   );
