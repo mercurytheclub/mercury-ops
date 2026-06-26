@@ -117,7 +117,7 @@ export default async function TripPage({ params }: { params: Promise<{ tripCode:
           overlap — the empty right column balances the grid to keep it centered.
           paddingBottom gives the masthead the same breathing room as the All
           Trips page before the content begins. */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", gap: "1.5rem", paddingBottom: "1.25rem" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", gap: "1.5rem", paddingBottom: "3rem" }}>
         <a href="/" className="label" style={{ justifySelf: "start", opacity: 0.6, whiteSpace: "nowrap" }}>← all trips</a>
         <a href="/" aria-label="Back to all trips" style={{ display: "flex", justifySelf: "center" }}>
           <Wordmark size={30} />
