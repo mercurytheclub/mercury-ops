@@ -48,63 +48,6 @@ a { color: var(--mercury-blue); text-decoration: none; }
 }
 .signout-btn:hover { opacity: 1; color: var(--mercury-blue); }
 
-/* ─── Welcome (post-sign-in greeting) ──────────────────────────────────── */
-/* Anchored to the top-left content gutter — mirrors "sign out" (top-right) so
-   it reads as part of the header, not a floating notification. No pill, no
-   glass: a mono kicker, an Atkinson line with the name in the single cyan
-   accent, and a hairline that draws in. Restraint over chrome. */
-.welcome {
-  position: fixed;
-  top: 1.5rem;
-  left: 6vw;
-  z-index: 40;
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-  pointer-events: none;
-  animation: welcome-in 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-.welcome-kicker {
-  font-family: var(--font-mono), monospace;
-  text-transform: uppercase;
-  letter-spacing: 0.2em;
-  font-size: 0.6rem;
-  color: var(--mercury-white);
-  opacity: 0.4;
-}
-.welcome-line {
-  font-family: var(--font-body), system-ui, sans-serif;
-  font-size: 1.2rem;
-  letter-spacing: 0.01em;
-  color: var(--mercury-white);
-  opacity: 0.92;
-}
-.welcome-name { color: var(--mercury-blue); }
-.welcome-rule {
-  height: 1px;
-  width: 184px;
-  max-width: 60vw;
-  margin-top: 0.1rem;
-  background: linear-gradient(90deg, var(--mercury-rule-2), transparent);
-  transform: scaleX(0);
-  transform-origin: left;
-  animation: welcome-rule 1s cubic-bezier(0.22, 1, 0.36, 1) 0.15s both;
-}
-.welcome-leaving { animation: welcome-out 0.55s ease forwards; }
-.welcome-leaving .welcome-rule { animation: none; transform: scaleX(1); }
-@keyframes welcome-in {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-@keyframes welcome-out {
-  from { opacity: 1; transform: translateY(0); }
-  to { opacity: 0; transform: translateY(-6px); }
-}
-@keyframes welcome-rule {
-  from { transform: scaleX(0); }
-  to { transform: scaleX(1); }
-}
-
 /* ─── Agenda (Today / ops) ─────────────────────────────────────────────── */
 .agenda-pill {
   font-family: var(--font-mono), monospace;
