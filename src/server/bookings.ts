@@ -5,7 +5,7 @@ import "server-only";
 // (the token has write scope). Tables + field names come from the shared config.
 
 import { BASE_ID, TOKEN, fetchAllPages, linkedIds, loadTripRows } from "./airtable";
-import { BOOKING_CONFIG, type BookingType, type FieldDef } from "@/lib/bookingFields";
+import { BOOKING_CONFIG, LINK_CONFIG, type BookingType, type LinkableType, type FieldDef } from "@/lib/bookingFields";
 
 /** Form value shape: strings for scalars, string[] for multiselect. */
 export type BookingValues = Record<string, string | string[]>;
@@ -119,7 +119,7 @@ type AnyRow = { id: string; fields: Record<string, unknown> };
 /** An existing booking the team can attach to this trip. */
 export type LinkableBooking = {
   recordId: string;
-  type: BookingType;
+  type: LinkableType;
   title: string;
   date: string | null;
   time: string | null;
@@ -138,15 +138,15 @@ function esc(s: string): string {
  * never load a whole booking table. Needs ≥2 query chars to run.
  */
 export async function searchLinkableBookings(
-  type: BookingType,
+  type: LinkableType,
   tripCode: string,
   query: string,
 ): Promise<LinkableBooking[]> {
-  const cfg = BOOKING_CONFIG[type];
+  const cfg = LINK_CONFIG[type];
   if (!cfg || !TOKEN) return [];
   const q = esc(query);
   if (q.length < 2) return [];
-  const { titleField, dateField, timeField } = cfg.link;
+  const { titleField, dateField, timeField } = cfg;
 
   // Exclude bookings already on THIS trip. Bound the code with commas on both
   // sides (and the joined list too) so one code can't substring-match another.
@@ -183,17 +183,17 @@ export async function searchLinkableBookings(
  * reservation keeps its clock time.
  */
 export async function linkBooking(input: {
-  type: BookingType;
+  type: LinkableType;
   recordId: string;
   tripRecordId: string;
   date?: string | null;
 }): Promise<SaveResult> {
-  const cfg = BOOKING_CONFIG[input.type];
+  const cfg = LINK_CONFIG[input.type];
   if (!cfg) return { ok: false, error: "unknown booking type" };
   if (!TOKEN) return { ok: false, error: "no Airtable token" };
 
   const fields: Record<string, unknown> = { "Trip ID": [input.tripRecordId] };
-  if (input.date) fields[cfg.link.dateField] = input.date;
+  if (input.date) fields[cfg.dateField] = input.date;
 
   try {
     const res = await fetch(api(`${cfg.tableId}/${input.recordId}`), {

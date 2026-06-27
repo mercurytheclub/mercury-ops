@@ -150,3 +150,37 @@ export const BOOKING_CONFIG: Record<BookingType, BookingTypeConfig> = {
 };
 
 export const BOOKING_TYPES = Object.keys(BOOKING_CONFIG) as BookingType[];
+
+// ───────────────────────────────────────────────────────────────────────────
+// Linking existing bookings
+// ───────────────────────────────────────────────────────────────────────────
+// ANY booking type the itinerary renders as one-row-per-booking can be attached
+// to a trip via the link picker — not just the four editable types. (Flights are
+// excluded: they're one row per guest, so linking a single row would split the
+// flight; that needs its own grouped flow.) Linking only needs lightweight
+// metadata — a searchable title field + the date/time used to place it on a day.
+export type LinkableType = BookingType | "hotel" | "villa";
+
+export type LinkMeta = {
+  label: string;
+  tableId: string;
+  titleField: string;
+  dateField: string;
+  timeField?: string;
+};
+
+export const LINK_CONFIG: Record<LinkableType, LinkMeta> = {
+  restaurant: { label: BOOKING_CONFIG.restaurant.label, tableId: BOOKING_CONFIG.restaurant.tableId, ...BOOKING_CONFIG.restaurant.link },
+  activity: { label: BOOKING_CONFIG.activity.label, tableId: BOOKING_CONFIG.activity.tableId, ...BOOKING_CONFIG.activity.link },
+  car: { label: BOOKING_CONFIG.car.label, tableId: BOOKING_CONFIG.car.tableId, ...BOOKING_CONFIG.car.link },
+  greeter: { label: BOOKING_CONFIG.greeter.label, tableId: BOOKING_CONFIG.greeter.tableId, ...BOOKING_CONFIG.greeter.link },
+  hotel: { label: "hotel", tableId: "tblZeoVNQyq2wWUtV", titleField: "Hotel Name", dateField: "Check In Date", timeField: "Check In Time" },
+  villa: { label: "villa", tableId: "tblNwLeS5fuj3qulQ", titleField: "Property Name", dateField: "Check In Date" },
+};
+
+export const LINKABLE_TYPES = Object.keys(LINK_CONFIG) as LinkableType[];
+
+/** Search hint per type — most search by name, car/greeter by supplier. */
+export function linkSearchHint(type: LinkableType): string {
+  return type === "car" || type === "greeter" ? "search by supplier…" : "search by name…";
+}

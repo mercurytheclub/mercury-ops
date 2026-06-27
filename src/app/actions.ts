@@ -5,7 +5,7 @@ import { getBookingForEdit, saveBooking, searchLinkableBookings, linkBooking, ty
 import { createTrip, type CreateTripInput, type CreateTripResult } from "@/server/trips";
 import { loadGuestOptions, type GuestOption } from "@/server/airtable";
 import { notifyTeam } from "@/server/notify";
-import type { BookingType } from "@/lib/bookingFields";
+import type { BookingType, LinkableType } from "@/lib/bookingFields";
 
 /** Load a booking's editable field values for the drawer (edit mode). */
 export async function loadBookingForEditAction(type: BookingType, recordId: string) {
@@ -45,7 +45,7 @@ export async function loadGuestOptionsAction(): Promise<GuestOption[]> {
 
 /** Search existing bookings of a type to attach to a trip (excludes this trip). */
 export async function searchLinkableBookingsAction(
-  type: BookingType,
+  type: LinkableType,
   tripCode: string,
   query: string,
 ): Promise<LinkableBooking[]> {
@@ -54,7 +54,7 @@ export async function searchLinkableBookingsAction(
 
 /** Attach an existing booking to a trip, then refresh the itinerary + list. */
 export async function linkBookingAction(input: {
-  type: BookingType;
+  type: LinkableType;
   recordId: string;
   tripRecordId: string;
   tripCode: string;

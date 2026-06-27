@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { BOOKING_CONFIG, BOOKING_TYPES, type BookingType } from "@/lib/bookingFields";
+import { LINK_CONFIG, LINKABLE_TYPES, linkSearchHint, type LinkableType } from "@/lib/bookingFields";
 import { searchLinkableBookingsAction, linkBookingAction } from "@/app/actions";
 import { showToast } from "@/app/components/Toast";
 import type { LinkableBooking } from "@/server/bookings";
@@ -37,7 +37,7 @@ export function LinkBookingEditor({
 }: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [type, setType] = useState<BookingType | null>(null);
+  const [type, setType] = useState<LinkableType | null>(null);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<LinkableBooking[]>([]);
   const [searching, setSearching] = useState(false);
@@ -109,7 +109,7 @@ export function LinkBookingEditor({
     };
   }, [open, type, query, selected, tripCode]);
 
-  function chooseType(t: BookingType) {
+  function chooseType(t: LinkableType) {
     setType(t);
     setSelected(null);
     setResults([]);
@@ -167,14 +167,14 @@ export function LinkBookingEditor({
                   <div className="bk-field">
                     <span className="bk-label label">Type</span>
                     <div className="bk-chips">
-                      {BOOKING_TYPES.map((t) => (
+                      {LINKABLE_TYPES.map((t) => (
                         <button
                           key={t}
                           type="button"
                           className={`bk-chip${type === t ? " bk-chip-on" : ""}`}
                           onClick={() => chooseType(t)}
                         >
-                          {BOOKING_CONFIG[t].label}
+                          {LINK_CONFIG[t].label}
                         </button>
                       ))}
                     </div>
@@ -182,11 +182,11 @@ export function LinkBookingEditor({
 
                   {type ? (
                     <div className="bk-field">
-                      <span className="bk-label label">Search {BOOKING_CONFIG[type].label}s</span>
+                      <span className="bk-label label">Search {LINK_CONFIG[type].label}s</span>
                       <input
                         ref={searchRef}
                         className="bk-input"
-                        placeholder={type === "car" || type === "greeter" ? "search by supplier…" : "search by name…"}
+                        placeholder={linkSearchHint(type)}
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
                         autoComplete="off"
@@ -197,9 +197,9 @@ export function LinkBookingEditor({
                           searching ? (
                             <p className="lb-hint">searching…</p>
                           ) : results.length === 0 ? (
-                            <p className="lb-hint">no existing {BOOKING_CONFIG[type].label}s match — they may already be on this trip.</p>
+                            <p className="lb-hint">no existing {LINK_CONFIG[type].label}s match — they may already be on this trip.</p>
                           ) : (
-                            <div className="gp-menu lb-results" role="listbox" aria-label={`existing ${BOOKING_CONFIG[type].label}s`}>
+                            <div className="gp-menu lb-results" role="listbox" aria-label={`existing ${LINK_CONFIG[type].label}s`}>
                               {results.map((b) => (
                                 <button key={b.recordId} type="button" role="option" aria-selected={false} className="gp-item lb-item" onClick={() => selectBooking(b)}>
                                   <span className="lb-title">{b.title}</span>
@@ -223,7 +223,7 @@ export function LinkBookingEditor({
               ) : (
                 <>
                   <div className="lb-selected">
-                    <span className="label" style={{ color: ACCENT, fontSize: "0.6rem" }}>{BOOKING_CONFIG[selected.type].label}</span>
+                    <span className="label" style={{ color: ACCENT, fontSize: "0.6rem" }}>{LINK_CONFIG[selected.type].label}</span>
                     <span style={{ fontSize: "1.05rem" }}>{selected.title}</span>
                     <span className="lb-meta">
                       {fmtDate(selected.date)}{selected.time ? ` · ${selected.time}` : ""}
