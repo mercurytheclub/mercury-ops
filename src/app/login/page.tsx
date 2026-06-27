@@ -38,7 +38,10 @@ export default async function LoginPage({
       }}
     >
       <Wordmark size={34} />
-      <p className="label" style={{ opacity: 0.5, marginTop: "-0.75rem" }}>concierge travel · ops</p>
+      {/* Brand tagline (lowercase, as the brand writes it) — not a repeat of "ops". */}
+      <p style={{ fontFamily: "var(--font-mono), monospace", letterSpacing: "0.22em", fontSize: "0.66rem", opacity: 0.4, marginTop: "-0.75rem" }}>
+        concierge travel
+      </p>
 
       <form
         action={async () => {
