@@ -151,10 +151,10 @@ export function linkedIds(field: unknown): string[] {
 // ---------------------------------------------------------------------------
 
 export function combineDateTime(
-  date: string | null | undefined,
-  time: string | null | undefined,
+  date: unknown,
+  time: unknown,
 ): string | null {
-  if (!date) return null;
+  if (!date || typeof date !== "string") return null;
   const day = String(date).slice(0, 10);
   let hh = 0;
   let mm = 0;

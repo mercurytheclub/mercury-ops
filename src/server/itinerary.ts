@@ -30,7 +30,24 @@ import {
 // Types
 // ---------------------------------------------------------------------------
 
-export type Category = "flight" | "hotel" | "car" | "restaurant" | "activity" | "villa" | "greeter";
+export type Category =
+  | "flight"
+  | "hotel"
+  | "car"
+  | "restaurant"
+  | "activity"
+  | "villa"
+  | "greeter"
+  | "cruise"
+  | "private_flight"
+  | "rental_car"
+  | "helicopter"
+  | "vip_terminal"
+  | "vip_event"
+  | "train"
+  | "luxury_train"
+  | "yacht_charter"
+  | "yacht_short";
 
 export type CostLine = { label: string; amount: number; currency: string };
 
@@ -735,6 +752,429 @@ const loadGreeters: Loader = async (guests, tripCode) => {
   return out;
 };
 
+// ── Cruises ───────────────────────────────────────────────────────────────
+type CruiseRow = { id: string; fields: Record<string, unknown> };
+const loadCruises: Loader = async (guests, tripCode) => {
+  const rows = await fetchAllPages<CruiseRow>("tblli9V6EUPLr2Acb", tripFilter(tripCode));
+  const out: Reservation[] = [];
+  for (const row of rows) {
+    const f = row.fields;
+    if (isCancelled(f["Status"])) continue;
+    const tripId = linkedIds(f["Trip ID"])[0];
+    const startAt = combineDateTime(f["Sailing Date"], f["Embarkation Start Time"]);
+    if (!tripId || !startAt) continue;
+    const cur = text(f["Currency"]) ?? "USD";
+    out.push({
+      id: `cruise-${row.id}`,
+      category: "cruise",
+      startAt,
+      endAt: combineDateTime(f["Return Date"], null),
+      title: text(f["Ship Name"]) ?? text(f["Itinerary Name"]) ?? "Cruise",
+      subtitle: joinDot(f["Itinerary Name"], f["Cabin Class"]) || null,
+      location: text(f["Departure Port"]) ?? text(f["Departure City"]),
+      guests: resolveGuestNames(guests, f["Guest"]),
+      confirmation: text(f["Confirmation Number"]),
+      admin: {
+        cost: costLines(
+          ["Total cruise fare", f["Total Cruise Fare"], cur],
+          ["Taxes & fees", f["Taxes & Fees"], cur],
+          ["Total charge", f["Total Charge"], cur],
+          ["Amount paid", f["Amount Paid"], cur],
+          ["Balance due", f["Balance Due"], cur],
+          ["Commission (internal)", f["Total Commission"], cur],
+        ),
+        details: detailsOf(
+          ["Ship", text(f["Ship Name"])],
+          ["Itinerary", text(f["Itinerary Name"])],
+          ["Cabin", joinDot(f["Cabin Class"], f["Stateroom Category"], f["Stateroom Number"])],
+          ["Sailing", whenStr(f["Sailing Date"], f["Embarkation Start Time"])],
+          ["Return", text(f["Return Date"]) ? fmtDateShort(String(f["Return Date"])) : ""],
+          ["Nights", nightsBetween(f["Sailing Date"], f["Return Date"])],
+          ["Departs", joinDot(f["Departure Port"], f["Departure City"])],
+          ["Disembarks", joinDot(f["Disembark Port"], f["Disembark City"])],
+          ["Booking status", text(f["Booking Status"])],
+          ["Confirmation #", text(f["Confirmation Number"])],
+          ["Cancellation policy", text(f["Cancellation Policy"])],
+          ["Notes", text(f["Notes"])],
+        ),
+      },
+      _tripRecordId: tripId,
+    });
+  }
+  return out;
+};
+
+// ── Private flights ─────────────────────────────────────────────────────────
+type PrivateFlightRow = { id: string; fields: Record<string, unknown> };
+const loadPrivateFlights: Loader = async (guests, tripCode) => {
+  const rows = await fetchAllPages<PrivateFlightRow>("tblD1G2s21Nv4HbNG", tripFilter(tripCode));
+  const out: Reservation[] = [];
+  for (const row of rows) {
+    const f = row.fields;
+    if (isCancelled(f["Status"])) continue;
+    const tripId = linkedIds(f["Trip ID"])[0];
+    const startAt = combineDateTime(f["Flight Departure Date"], f["Flight Departure Time"]);
+    if (!tripId || !startAt) continue;
+    const dep = text(f["Departure Airport"]);
+    const arr = text(f["Arrival Airport"]);
+    out.push({
+      id: `private_flight-${row.id}`,
+      category: "private_flight",
+      startAt,
+      endAt: combineDateTime(f["Flight Arrival Date"], f["Flight Arrival Time"]),
+      title: dep && arr ? `${dep} → ${arr}` : "Private flight",
+      subtitle: joinDot(f["Operator"], f["Tail Number"]) || null,
+      location: text(f["Departure FBO"]) ?? dep,
+      guests: resolveGuestNames(guests, f["Lead Guest"], f["Companions"]),
+      confirmation: null,
+      admin: {
+        cost: costLines(
+          ["Charter cost", f["Charter Cost"]],
+          ["Net cost (internal)", f["Net Cost (Internal Only)"]],
+        ),
+        details: detailsOf(
+          ["Operator", text(f["Operator"])],
+          ["Tail number", text(f["Tail Number"])],
+          ["Departs", joinDot(whenStr(f["Flight Departure Date"], f["Flight Departure Time"]), text(f["Departure FBO"]))],
+          ["Arrives", joinDot(whenStr(f["Flight Arrival Date"], f["Flight Arrival Time"]), text(f["Arrival FBO"]))],
+          ["Crew", text(f["Crew Names"])],
+          ["Catering", text(f["Catering Notes"])],
+          ["Notes", text(f["Notes"])],
+        ),
+      },
+      _tripRecordId: tripId,
+    });
+  }
+  return out;
+};
+
+// ── Rental cars ─────────────────────────────────────────────────────────────
+type RentalCarRow = { id: string; fields: Record<string, unknown> };
+const loadRentalCars: Loader = async (guests, tripCode) => {
+  const rows = await fetchAllPages<RentalCarRow>("tblC5IJe3DtPVqyP6", tripFilter(tripCode));
+  const out: Reservation[] = [];
+  for (const row of rows) {
+    const f = row.fields;
+    if (isCancelled(f["Status"])) continue;
+    const tripId = linkedIds(f["Trip ID"])[0];
+    const startAt = combineDateTime(f["Pick Up Date"], f["Pick Up Time"]);
+    if (!tripId || !startAt) continue;
+    out.push({
+      id: `rental_car-${row.id}`,
+      category: "rental_car",
+      startAt,
+      endAt: combineDateTime(f["Drop Off Date"], f["Drop Off Time"]),
+      title: text(f["Rental Company"]) ?? "Rental car",
+      subtitle: text(f["Vehicle Type"]),
+      location: text(f["Pickup Address"]),
+      guests: resolveGuestNames(guests, f["Lead Guest"], f["Companions"]),
+      confirmation: text(f["Confirmation Number"]),
+      admin: {
+        cost: [],
+        details: detailsOf(
+          ["Company", text(f["Rental Company"])],
+          ["Vehicle", text(f["Vehicle Type"])],
+          ["Pick up", joinDot(whenStr(f["Pick Up Date"], f["Pick Up Time"]), text(f["Pickup Address"]))],
+          ["Drop off", joinDot(whenStr(f["Drop Off Date"], f["Drop Off Time"]), text(f["Dropoff Address"]))],
+          ["Driver(s)", text(f["Driver Name(s)"])],
+          ["Payment", text(f["Payment"])],
+          ["Confirmation #", text(f["Confirmation Number"])],
+          ["Pick-up notes", text(f["Pickup Instructions"])],
+          ["Drop-off notes", text(f["Dropoff Instructions"])],
+        ),
+      },
+      _tripRecordId: tripId,
+    });
+  }
+  return out;
+};
+
+// ── Helicopters ─────────────────────────────────────────────────────────────
+type HelicopterRow = { id: string; fields: Record<string, unknown> };
+const loadHelicopters: Loader = async (guests, tripCode) => {
+  const rows = await fetchAllPages<HelicopterRow>("tblZnCNZtkamdc3ET", tripFilter(tripCode));
+  const out: Reservation[] = [];
+  for (const row of rows) {
+    const f = row.fields;
+    if (isCancelled(f["Status"])) continue;
+    const tripId = linkedIds(f["Trip ID"])[0];
+    const startAt = combineDateTime(f["Flight Departure Date"], f["Flight Departure Time"]);
+    if (!tripId || !startAt) continue;
+    const orig = text(f["Origin Helipad"]) ?? text(f["Departure City"]);
+    const dest = text(f["Destination Helipad"]) ?? text(f["Arrival City"]);
+    out.push({
+      id: `helicopter-${row.id}`,
+      category: "helicopter",
+      startAt,
+      endAt: combineDateTime(f["Flight Arrival Date"], f["Flight Arrival Time"]),
+      title: orig && dest ? `${orig} → ${dest}` : "Helicopter",
+      subtitle: joinDot(f["Operator"], f["Aircraft Type"]) || null,
+      location: text(f["Departure Address"]) ?? text(f["Departure City"]),
+      guests: resolveGuestNames(guests, f["Lead Guest"], f["Companions"]),
+      confirmation: text(f["Confirmation Number"]),
+      admin: {
+        cost: [],
+        details: detailsOf(
+          ["Operator", text(f["Operator"])],
+          ["Aircraft", text(f["Aircraft Type"])],
+          ["Departs", joinDot(whenStr(f["Flight Departure Date"], f["Flight Departure Time"]), text(f["Departure Address"]))],
+          ["Arrives", joinDot(whenStr(f["Flight Arrival Date"], f["Flight Arrival Time"]), text(f["Arrival Address"]))],
+          ["Confirmation #", text(f["Confirmation Number"])],
+          ["Notes", text(f["Notes"])],
+        ),
+      },
+      _tripRecordId: tripId,
+    });
+  }
+  return out;
+};
+
+// ── VIP terminals ───────────────────────────────────────────────────────────
+type VipTerminalRow = { id: string; fields: Record<string, unknown> };
+const loadVipTerminals: Loader = async (guests, tripCode) => {
+  const rows = await fetchAllPages<VipTerminalRow>("tblQrwjoxgum85bY2", tripFilter(tripCode));
+  const out: Reservation[] = [];
+  for (const row of rows) {
+    const f = row.fields;
+    if (isCancelled(f["Status"])) continue;
+    const tripId = linkedIds(f["Trip ID"])[0];
+    const startAt = combineDateTime(f["Service Date"], f["Service Time"]);
+    if (!tripId || !startAt) continue;
+    out.push({
+      id: `vip_terminal-${row.id}`,
+      category: "vip_terminal",
+      startAt,
+      endAt: null,
+      title: text(f["Airport"]) ? `VIP terminal · ${text(f["Airport"])}` : "VIP terminal",
+      subtitle: joinDot(f["Service Type"], f["Associated Flight"]) || null,
+      location: text(f["Airport"]),
+      guests: resolveGuestNames(guests, f["Lead Guest"], f["Companions"]),
+      confirmation: text(f["Confirmation Number"]),
+      admin: {
+        cost: [],
+        details: detailsOf(
+          ["Airport", text(f["Airport"])],
+          ["Service", text(f["Service Type"])],
+          ["Flight", text(f["Associated Flight"])],
+          ["When", whenStr(f["Service Date"], f["Service Time"])],
+          ["Confirmation #", text(f["Confirmation Number"])],
+          ["Status", text(f["Status"])],
+          ["Notes", text(f["Notes"])],
+        ),
+      },
+      _tripRecordId: tripId,
+    });
+  }
+  return out;
+};
+
+// ── VIP events ──────────────────────────────────────────────────────────────
+type VipEventRow = { id: string; fields: Record<string, unknown> };
+const loadVipEvents: Loader = async (guests, tripCode) => {
+  const rows = await fetchAllPages<VipEventRow>("tblRuveDqzottMIyd", tripFilter(tripCode));
+  const out: Reservation[] = [];
+  for (const row of rows) {
+    const f = row.fields;
+    if (isCancelled(f["Status"])) continue;
+    const tripId = linkedIds(f["Trip ID"])[0];
+    const startAt = combineDateTime(f["Event Start Date"], f["Event Start Time"]);
+    if (!tripId || !startAt) continue;
+    out.push({
+      id: `vip_event-${row.id}`,
+      category: "vip_event",
+      startAt,
+      endAt: combineDateTime(f["Event End Date"], f["Event End Time"]),
+      title: text(f["Event Name"]) ?? "VIP event",
+      subtitle: joinDot(f["Event Type"], f["Venue"]) || null,
+      location: text(f["Venue"]),
+      guests: resolveGuestNames(guests, f["Guest"]),
+      confirmation: text(f["Confirmation Number"]),
+      admin: {
+        cost: [],
+        details: detailsOf(
+          ["Event", text(f["Event Name"])],
+          ["Venue", text(f["Venue"])],
+          ["Type", text(f["Event Type"])],
+          ["Tier / pass", text(f["Tier / Pass"])],
+          ["Starts", whenStr(f["Event Start Date"], f["Event Start Time"])],
+          ["Ends", whenStr(f["Event End Date"], f["Event End Time"])],
+          ["Confirmation #", text(f["Confirmation Number"])],
+          ["Notes", text(f["Notes"])],
+        ),
+      },
+      _tripRecordId: tripId,
+    });
+  }
+  return out;
+};
+
+// ── Trains ──────────────────────────────────────────────────────────────────
+type TrainRow = { id: string; fields: Record<string, unknown> };
+const loadTrains: Loader = async (guests, tripCode) => {
+  const rows = await fetchAllPages<TrainRow>("tbll8JRoErHvAfdPm", tripFilter(tripCode));
+  const out: Reservation[] = [];
+  for (const row of rows) {
+    const f = row.fields;
+    if (isCancelled(f["Status"])) continue;
+    const tripId = linkedIds(f["Trip ID"])[0];
+    const startAt = combineDateTime(f["Departure Date"], f["Departure Time"]);
+    if (!tripId || !startAt) continue;
+    const orig = text(f["Origin Station"]) ?? text(f["Origin City"]);
+    const dest = text(f["Destination Station"]) ?? text(f["Destination City"]);
+    out.push({
+      id: `train-${row.id}`,
+      category: "train",
+      startAt,
+      endAt: combineDateTime(f["Arrival Date"], f["Arrival Time"]),
+      title: orig && dest ? `${orig} → ${dest}` : "Train",
+      subtitle: joinDot(f["Train Number"], f["Class"]) || null,
+      location: text(f["Origin Station"]),
+      guests: resolveGuestNames(guests, f["Lead Guest"], f["Guest"]),
+      confirmation: text(f["Confirmation Number"]),
+      admin: {
+        cost: [],
+        details: detailsOf(
+          ["Train #", text(f["Train Number"])],
+          ["Class", text(f["Class"])],
+          ["Carriage / seat", joinDot(f["Carriage"], f["Seat"])],
+          ["Departs", joinDot(whenStr(f["Departure Date"], f["Departure Time"]), text(f["Origin Station"]))],
+          ["Arrives", joinDot(whenStr(f["Arrival Date"], f["Arrival Time"]), text(f["Destination Station"]))],
+          ["Confirmation #", text(f["Confirmation Number"])],
+          ["Notes", text(f["Notes"])],
+        ),
+      },
+      _tripRecordId: tripId,
+    });
+  }
+  return out;
+};
+
+// ── Luxury trains ───────────────────────────────────────────────────────────
+type LuxuryTrainRow = { id: string; fields: Record<string, unknown> };
+const loadLuxuryTrains: Loader = async (guests, tripCode) => {
+  const rows = await fetchAllPages<LuxuryTrainRow>("tbllhj4Z4D2mNDg0M", tripFilter(tripCode));
+  const out: Reservation[] = [];
+  for (const row of rows) {
+    const f = row.fields;
+    if (isCancelled(f["Status"])) continue;
+    const tripId = linkedIds(f["Trip ID"])[0];
+    const startAt = combineDateTime(f["Boarding Date"], f["Boarding Time"]);
+    if (!tripId || !startAt) continue;
+    const cur = text(f["Currency"]) ?? "USD";
+    out.push({
+      id: `luxury_train-${row.id}`,
+      category: "luxury_train",
+      startAt,
+      endAt: combineDateTime(f["Disembarking Date"], f["Disembarking Time"]),
+      title: text(f["Train Name"]) ?? "Luxury train",
+      subtitle: joinDot(f["Itinerary Name"], f["Cabin Category"]) || null,
+      location: text(f["Origin Station"]) ?? text(f["Origin City"]),
+      guests: resolveGuestNames(guests, f["Guest"]),
+      confirmation: text(f["Confirmation Number"]),
+      admin: {
+        cost: costLines(
+          ["Cabin rate", f["Cabin Rate"], cur],
+          ["Deposit", f["Deposit Amount"], cur],
+        ),
+        details: detailsOf(
+          ["Train", text(f["Train Name"])],
+          ["Itinerary", text(f["Itinerary Name"])],
+          ["Operator", text(f["Operator"])],
+          ["Cabin", joinDot(f["Cabin Category"], f["Cabin Number"])],
+          ["Boards", joinDot(whenStr(f["Boarding Date"], f["Boarding Time"]), text(f["Origin Station"]))],
+          ["Disembarks", joinDot(whenStr(f["Disembarking Date"], f["Disembarking Time"]), text(f["Destination Station"]))],
+          ["Confirmation #", text(f["Confirmation Number"])],
+          ["Cancellation policy", text(f["Cancellation Policy"])],
+          ["Notes", text(f["Notes"])],
+        ),
+      },
+      _tripRecordId: tripId,
+    });
+  }
+  return out;
+};
+
+// ── Yacht charters ──────────────────────────────────────────────────────────
+type YachtCharterRow = { id: string; fields: Record<string, unknown> };
+const loadYachtCharters: Loader = async (guests, tripCode) => {
+  const rows = await fetchAllPages<YachtCharterRow>("tblzaTuqLXD6use0q", tripFilter(tripCode));
+  const out: Reservation[] = [];
+  for (const row of rows) {
+    const f = row.fields;
+    if (isCancelled(f["Status"])) continue;
+    const tripId = linkedIds(f["Trip ID"])[0];
+    const startAt = combineDateTime(f["Embark Date"], f["Embark Time"]);
+    if (!tripId || !startAt) continue;
+    out.push({
+      id: `yacht_charter-${row.id}`,
+      category: "yacht_charter",
+      startAt,
+      endAt: combineDateTime(f["Disembark Date"], f["Disembark Time"]),
+      title: text(f["Yacht Name"]) ?? "Yacht charter",
+      subtitle: joinDot(f["Charter Company"], f["Vessel Length"]) || null,
+      location: text(f["Embark Port"]),
+      guests: resolveGuestNames(guests, f["Lead Guest"], f["Companions"]),
+      confirmation: text(f["Confirmation Number"]),
+      admin: {
+        cost: [],
+        details: detailsOf(
+          ["Yacht", text(f["Yacht Name"])],
+          ["Charter company", text(f["Charter Company"])],
+          ["Captain", text(f["Captain Name"])],
+          ["Embarks", joinDot(whenStr(f["Embark Date"], f["Embark Time"]), text(f["Embark Port"]))],
+          ["Disembarks", joinDot(whenStr(f["Disembark Date"], f["Disembark Time"]), text(f["Disembark Port"]))],
+          ["Crew size", f["Crew Size"]],
+          ["Itinerary", text(f["Itinerary"])],
+          ["Confirmation #", text(f["Confirmation Number"])],
+          ["Notes", text(f["Notes"])],
+        ),
+      },
+      _tripRecordId: tripId,
+    });
+  }
+  return out;
+};
+
+// ── Short-term yacht hires ──────────────────────────────────────────────────
+type ShortYachtRow = { id: string; fields: Record<string, unknown> };
+const loadShortYachts: Loader = async (guests, tripCode) => {
+  const rows = await fetchAllPages<ShortYachtRow>("tbln4NAu4FZb0hy7a", tripFilter(tripCode));
+  const out: Reservation[] = [];
+  for (const row of rows) {
+    const f = row.fields;
+    if (isCancelled(f["Status"])) continue;
+    const tripId = linkedIds(f["Trip ID"])[0];
+    const startAt = combineDateTime(f["Charter Start Date"], f["Charter Start Time"]);
+    if (!tripId || !startAt) continue;
+    out.push({
+      id: `yacht_short-${row.id}`,
+      category: "yacht_short",
+      startAt,
+      endAt: combineDateTime(f["Charter End Date"], f["Charter End Time"]),
+      title: text(f["Yacht Name"]) ?? "Yacht hire",
+      subtitle: joinDot(f["Provider"], f["Duration"]) || null,
+      location: text(f["Embark Port"]),
+      guests: resolveGuestNames(guests, f["Lead Guest"], f["Companions"]),
+      confirmation: text(f["Confirmation Number"]),
+      admin: {
+        cost: [],
+        details: detailsOf(
+          ["Yacht", text(f["Yacht Name"])],
+          ["Provider", text(f["Provider"])],
+          ["Captain", text(f["Captain Name"])],
+          ["Duration", text(f["Duration"])],
+          ["Starts", joinDot(whenStr(f["Charter Start Date"], f["Charter Start Time"]), text(f["Embark Port"]))],
+          ["Ends", whenStr(f["Charter End Date"], f["Charter End Time"])],
+          ["Confirmation #", text(f["Confirmation Number"])],
+          ["Notes", text(f["Notes"])],
+        ),
+      },
+      _tripRecordId: tripId,
+    });
+  }
+  return out;
+};
+
 // Every category loader. Add a new booking type here and it joins the itinerary.
 const CATEGORY_LOADERS: Loader[] = [
   loadFlights,
@@ -744,6 +1184,16 @@ const CATEGORY_LOADERS: Loader[] = [
   loadRestaurants,
   loadActivities,
   loadGreeters,
+  loadCruises,
+  loadPrivateFlights,
+  loadRentalCars,
+  loadHelicopters,
+  loadVipTerminals,
+  loadVipEvents,
+  loadTrains,
+  loadLuxuryTrains,
+  loadYachtCharters,
+  loadShortYachts,
 ];
 
 // Reservations for ONE trip. Each category is fetched server-side filtered to

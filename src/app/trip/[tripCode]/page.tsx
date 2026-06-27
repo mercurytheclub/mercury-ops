@@ -25,6 +25,16 @@ const CATEGORY_LABEL: Record<Reservation["category"], string> = {
   restaurant: "RESTAURANT",
   activity: "ACTIVITY",
   greeter: "AIRPORT GREETER",
+  cruise: "CRUISE",
+  private_flight: "PRIVATE FLIGHT",
+  rental_car: "RENTAL CAR",
+  helicopter: "HELICOPTER",
+  vip_terminal: "VIP TERMINAL",
+  vip_event: "VIP EVENT",
+  train: "TRAIN",
+  luxury_train: "LUXURY TRAIN",
+  yacht_charter: "YACHT CHARTER",
+  yacht_short: "YACHT HIRE",
 };
 
 function fmtMoney(amount: number, currency: string): string {

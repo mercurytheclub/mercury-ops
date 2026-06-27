@@ -159,7 +159,20 @@ export const BOOKING_TYPES = Object.keys(BOOKING_CONFIG) as BookingType[];
 // excluded: they're one row per guest, so linking a single row would split the
 // flight; that needs its own grouped flow.) Linking only needs lightweight
 // metadata — a searchable title field + the date/time used to place it on a day.
-export type LinkableType = BookingType | "hotel" | "villa";
+export type LinkableType =
+  | BookingType
+  | "hotel"
+  | "villa"
+  | "cruise"
+  | "private_flight"
+  | "rental_car"
+  | "helicopter"
+  | "vip_terminal"
+  | "vip_event"
+  | "train"
+  | "luxury_train"
+  | "yacht_charter"
+  | "yacht_short";
 
 export type LinkMeta = {
   label: string;
@@ -176,6 +189,16 @@ export const LINK_CONFIG: Record<LinkableType, LinkMeta> = {
   greeter: { label: BOOKING_CONFIG.greeter.label, tableId: BOOKING_CONFIG.greeter.tableId, ...BOOKING_CONFIG.greeter.link },
   hotel: { label: "hotel", tableId: "tblZeoVNQyq2wWUtV", titleField: "Hotel Name", dateField: "Check In Date", timeField: "Check In Time" },
   villa: { label: "villa", tableId: "tblNwLeS5fuj3qulQ", titleField: "Property Name", dateField: "Check In Date" },
+  cruise: { label: "cruise", tableId: "tblli9V6EUPLr2Acb", titleField: "Ship Name", dateField: "Sailing Date", timeField: "Embarkation Start Time" },
+  private_flight: { label: "private flight", tableId: "tblD1G2s21Nv4HbNG", titleField: "Operator", dateField: "Flight Departure Date", timeField: "Flight Departure Time" },
+  rental_car: { label: "rental car", tableId: "tblC5IJe3DtPVqyP6", titleField: "Rental Company", dateField: "Pick Up Date", timeField: "Pick Up Time" },
+  helicopter: { label: "helicopter", tableId: "tblZnCNZtkamdc3ET", titleField: "Operator", dateField: "Flight Departure Date", timeField: "Flight Departure Time" },
+  vip_terminal: { label: "VIP terminal", tableId: "tblQrwjoxgum85bY2", titleField: "Airport", dateField: "Service Date", timeField: "Service Time" },
+  vip_event: { label: "VIP event", tableId: "tblRuveDqzottMIyd", titleField: "Event Name", dateField: "Event Start Date", timeField: "Event Start Time" },
+  train: { label: "train", tableId: "tbll8JRoErHvAfdPm", titleField: "Origin Station", dateField: "Departure Date", timeField: "Departure Time" },
+  luxury_train: { label: "luxury train", tableId: "tbllhj4Z4D2mNDg0M", titleField: "Train Name", dateField: "Boarding Date", timeField: "Boarding Time" },
+  yacht_charter: { label: "yacht charter", tableId: "tblzaTuqLXD6use0q", titleField: "Yacht Name", dateField: "Embark Date", timeField: "Embark Time" },
+  yacht_short: { label: "yacht hire", tableId: "tbln4NAu4FZb0hy7a", titleField: "Yacht Name", dateField: "Charter Start Date", timeField: "Charter Start Time" },
 };
 
 export const LINKABLE_TYPES = Object.keys(LINK_CONFIG) as LinkableType[];
