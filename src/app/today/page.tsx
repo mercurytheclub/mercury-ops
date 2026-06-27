@@ -9,6 +9,9 @@ export const revalidate = 60;
 const RANGES = { today: 1, week: 7, month: 30 } as const;
 type RangeKey = keyof typeof RANGES;
 const RANGE_LABEL: Record<RangeKey, string> = { today: "today", week: "next 7 days", month: "next 30 days" };
+// Title-cased counterpart — the H1 reflects the active window, so it always says
+// something the nav doesn't (vs. a static "Operations" that just renamed the tab).
+const RANGE_TITLE: Record<RangeKey, string> = { today: "Today", week: "Next 7 days", month: "Next 30 days" };
 
 function addDays(isoDate: string, n: number): string {
   return new Date(new Date(isoDate + "T00:00:00Z").getTime() + n * 86_400_000).toISOString().slice(0, 10);
@@ -60,9 +63,12 @@ export default async function TodayPage({
       </nav>
 
       <div style={{ display: "flex", flexDirection: "column", gap: "0.9rem" }}>
-        <div style={{ display: "flex", alignItems: "baseline", gap: "1rem", flexWrap: "wrap" }}>
-          <h1 style={{ margin: 0, fontSize: "2rem", fontWeight: 400 }}>Operations</h1>
-          <span className="label" style={{ opacity: 0.5 }}>{total} item{total === 1 ? "" : "s"} · {RANGE_LABEL[range]}</span>
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem" }}>
+          <span className="label" style={{ opacity: 0.4 }}>operations</span>
+          <div style={{ display: "flex", alignItems: "baseline", gap: "1rem", flexWrap: "wrap" }}>
+            <h1 style={{ margin: 0, fontSize: "2rem", fontWeight: 400 }}>{RANGE_TITLE[range]}</h1>
+            <span className="label" style={{ opacity: 0.5 }}>{total} item{total === 1 ? "" : "s"}</span>
+          </div>
         </div>
         {/* Range pills */}
         <div style={{ display: "flex", gap: "0.5rem" }}>
