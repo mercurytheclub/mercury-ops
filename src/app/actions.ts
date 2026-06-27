@@ -1,7 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { getBookingForEdit, saveBooking, searchLinkableBookings, linkBooking, type BookingValues, type SaveResult, type LinkableBooking } from "@/server/bookings";
+import { auth } from "@/auth";
+import { getBookingForEdit, saveBooking, searchLinkableBookings, linkBooking, unlinkBooking, type BookingValues, type SaveResult, type LinkableBooking } from "@/server/bookings";
 import { createTrip, type CreateTripInput, type CreateTripResult } from "@/server/trips";
 import { loadGuestOptions, type GuestOption } from "@/server/airtable";
 import { notifyTeam } from "@/server/notify";
@@ -23,12 +24,16 @@ export async function saveBookingAction(input: {
 }): Promise<SaveResult> {
   const result = await saveBooking(input);
   if (result.ok) {
+    // Stamp the signed-in team member (falls back to "Mercury Ops" pre-auth).
+    const session = await auth();
+    const submittedBy = session?.user?.name || session?.user?.email || undefined;
     // WhatsApp the team group for this booking type (no-ops without WHAPI_TOKEN).
     await notifyTeam({
       type: input.type,
       isEdit: !!input.recordId,
       values: input.values,
       tripName: input.tripName ?? undefined,
+      submittedBy,
     });
     if (input.tripCode) {
       revalidatePath(`/trip/${input.tripCode}`);
@@ -66,6 +71,20 @@ export async function linkBookingAction(input: {
   if (res.ok) {
     revalidatePath(`/trip/${input.tripCode}`);
     for (const code of input.fromTripCodes ?? []) revalidatePath(`/trip/${code}`);
+    revalidatePath("/");
+  }
+  return res;
+}
+
+/** Remove a booking from a trip (clears its Trip ID), then refresh views. */
+export async function unlinkBookingAction(input: {
+  type: BookingType;
+  recordId: string;
+  tripCode: string;
+}): Promise<SaveResult> {
+  const res = await unlinkBooking(input);
+  if (res.ok) {
+    revalidatePath(`/trip/${input.tripCode}`);
     revalidatePath("/");
   }
   return res;

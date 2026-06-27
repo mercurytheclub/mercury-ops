@@ -211,3 +211,33 @@ export async function linkBooking(input: {
     return { ok: false, error: String(err) };
   }
 }
+
+/**
+ * Remove a booking from its trip by clearing its Trip ID link. Non-destructive:
+ * the booking record stays in Airtable (an orphan, re-linkable via the picker),
+ * it just leaves this trip's itinerary. The inverse of linkBooking.
+ */
+export async function unlinkBooking(input: {
+  type: BookingType;
+  recordId: string;
+}): Promise<SaveResult> {
+  const cfg = BOOKING_CONFIG[input.type];
+  if (!cfg) return { ok: false, error: "unknown booking type" };
+  if (!TOKEN) return { ok: false, error: "no Airtable token" };
+
+  try {
+    const res = await fetch(api(`${cfg.tableId}/${input.recordId}`), {
+      method: "PATCH",
+      headers: authHeaders,
+      body: JSON.stringify({ fields: { "Trip ID": [] } }),
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      return { ok: false, error: `Airtable ${res.status}: ${text.slice(0, 300)}` };
+    }
+    const saved = (await res.json()) as { id: string };
+    return { ok: true, id: saved.id };
+  } catch (err) {
+    return { ok: false, error: String(err) };
+  }
+}

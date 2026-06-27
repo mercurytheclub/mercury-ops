@@ -18,6 +18,70 @@ a { color: var(--mercury-blue); text-decoration: none; }
 /* hairlines, not borders */
 .hairline { border: 0; border-top: 1px solid var(--mercury-rule); }
 
+/* ─── Login ────────────────────────────────────────────────────────────── */
+.login-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7rem;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--mercury-rule-2);
+  border-radius: 999px;
+  color: var(--mercury-white);
+  font-family: var(--font-body), system-ui, sans-serif;
+  font-size: 0.95rem;
+  padding: 0.7rem 1.4rem;
+  transition: border-color 0.15s, background 0.15s;
+}
+.login-btn:hover { border-color: var(--mercury-blue); background: rgba(82, 165, 211, 0.06); }
+
+.signout-form { position: fixed; top: 1.1rem; right: 1.4rem; z-index: 40; }
+.signout-btn {
+  background: none;
+  border: 0;
+  cursor: pointer;
+  color: var(--mercury-white);
+  opacity: 0.4;
+  font-size: 0.6rem;
+  padding: 0.3rem 0.4rem;
+  transition: opacity 0.15s, color 0.15s;
+}
+.signout-btn:hover { opacity: 1; color: var(--mercury-blue); }
+
+/* ─── Agenda (Today / ops) ─────────────────────────────────────────────── */
+.agenda-pill {
+  font-family: var(--font-mono), monospace;
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--mercury-white);
+  border: 1px solid var(--mercury-rule-2);
+  border-radius: 999px;
+  padding: 0.4rem 0.8rem;
+  opacity: 0.6;
+  transition: opacity 0.15s, border-color 0.15s, color 0.15s;
+}
+.agenda-pill:hover { opacity: 1; border-color: var(--mercury-blue); }
+.agenda-pill-on { opacity: 1; color: var(--mercury-blue); border-color: var(--mercury-blue); background: rgba(82, 165, 211, 0.08); }
+
+.agenda-row {
+  display: grid;
+  grid-template-columns: 5.5rem 1fr auto;
+  gap: 0 1.25rem;
+  align-items: start;
+  padding: 0.85rem 0;
+  border-bottom: 1px solid var(--mercury-rule);
+  color: var(--mercury-white);
+  transition: background 0.12s;
+}
+.agenda-row:hover { background: rgba(255, 255, 255, 0.02); }
+.agenda-time { font-family: var(--font-mono), monospace; font-size: 0.78rem; opacity: 0.55; padding-top: 0.15rem; }
+.agenda-body { display: flex; flex-direction: column; gap: 0.2rem; min-width: 0; }
+.agenda-cat { font-size: 0.6rem; opacity: 0.9; }
+.agenda-title { font-size: 1rem; }
+.agenda-meta { font-size: 0.82rem; opacity: 0.6; }
+.agenda-trip { font-size: 0.62rem; opacity: 0.45; white-space: nowrap; padding-top: 0.15rem; }
+
 /* mono micro-label — FLIGHT, HOTEL, etc. Lowercase wordmark is the exception. */
 .label {
   font-family: var(--font-mono), monospace;
@@ -245,6 +309,43 @@ select.bk-input option { background: #0c0c0c; color: var(--mercury-white); }
 }
 .bk-btn-save:hover { opacity: 0.9; }
 .bk-btn-save:disabled { opacity: 0.45; cursor: default; }
+
+/* footer layout: remove-from-trip (left) + cancel/save (right), wrap-friendly */
+.bk-foot-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem 0.75rem;
+  flex-wrap: wrap;
+}
+.bk-foot-actions { display: flex; gap: 0.75rem; justify-content: flex-end; margin-left: auto; }
+
+/* remove from trip — alert red, low emphasis, with an inline confirm */
+.bk-btn-unlink {
+  background: none;
+  border: 0;
+  cursor: pointer;
+  color: var(--mercury-red);
+  opacity: 0.7;
+  padding: 0.6rem 0;
+  transition: opacity 0.15s;
+}
+.bk-btn-unlink:hover { opacity: 1; }
+.bk-btn-unlink:disabled { opacity: 0.3; cursor: default; }
+.bk-remove-confirm { display: inline-flex; align-items: center; gap: 0.55rem; flex-wrap: wrap; }
+.bk-remove-q { color: var(--mercury-red); opacity: 0.85; }
+.bk-btn-remove {
+  background: var(--mercury-red);
+  border: 0;
+  border-radius: 4px;
+  cursor: pointer;
+  color: #1a0606;
+  font-weight: 600;
+  padding: 0.6rem 1.1rem;
+  transition: opacity 0.15s;
+}
+.bk-btn-remove:hover { opacity: 0.9; }
+.bk-btn-remove:disabled { opacity: 0.45; cursor: default; }
 
 /* ─── New trip: trigger + name preview ─────────────────────────────────── */
 .trip-new-btn {

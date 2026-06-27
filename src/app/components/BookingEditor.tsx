@@ -3,7 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { BOOKING_CONFIG, type BookingType, type FieldDef } from "@/lib/bookingFields";
-import { loadBookingForEditAction, saveBookingAction } from "@/app/actions";
+import { loadBookingForEditAction, saveBookingAction, unlinkBookingAction } from "@/app/actions";
 import { showToast } from "@/app/components/Toast";
 import type { BookingValues } from "@/server/bookings";
 
@@ -58,8 +58,11 @@ export function BookingEditor({
   const [values, setValues] = useState<BookingValues>(() => emptyValues(type, initialDate));
   const [error, setError] = useState<string | null>(null);
   const [pending, startSave] = useTransition();
+  const [confirmRemove, setConfirmRemove] = useState(false);
+  const [removing, startRemove] = useTransition();
 
   function close() {
+    setConfirmRemove(false);
     setOpen(false);
     onClose?.();
   }
@@ -123,6 +126,22 @@ export function BookingEditor({
     });
   }
 
+  function handleRemove() {
+    if (!recordId) return;
+    setError(null);
+    startRemove(async () => {
+      const res = await unlinkBookingAction({ type, recordId, tripCode });
+      if (res.ok) {
+        const label = cfg.label.charAt(0).toUpperCase() + cfg.label.slice(1);
+        showToast(`${label} removed from trip`);
+        close();
+        router.refresh();
+      } else {
+        setError(res.error);
+      }
+    });
+  }
+
   return (
     <>
       {triggerVariant === "none" ? null : variant === "edit" ? (
@@ -169,13 +188,34 @@ export function BookingEditor({
 
             <footer className="bk-panel-foot">
               {error ? <p className="bk-error">{error}</p> : null}
-              <div style={{ display: "flex", gap: "0.75rem", justifyContent: "flex-end" }}>
-                <button type="button" className="bk-btn-ghost label" onClick={() => close()} disabled={pending}>
-                  cancel
-                </button>
-                <button type="button" className="bk-btn-save label" onClick={handleSave} disabled={pending || loading}>
-                  {pending ? "saving…" : variant === "edit" ? "save changes" : "create booking"}
-                </button>
+              <div className="bk-foot-row">
+                {variant === "edit" && recordId ? (
+                  confirmRemove ? (
+                    <span className="bk-remove-confirm">
+                      <span className="bk-remove-q label">remove from trip?</span>
+                      <button type="button" className="bk-btn-remove label" onClick={handleRemove} disabled={removing || pending}>
+                        {removing ? "removing…" : "remove"}
+                      </button>
+                      <button type="button" className="bk-btn-ghost label" onClick={() => setConfirmRemove(false)} disabled={removing}>
+                        keep
+                      </button>
+                    </span>
+                  ) : (
+                    <button type="button" className="bk-btn-unlink label" onClick={() => setConfirmRemove(true)} disabled={pending || loading}>
+                      remove from trip
+                    </button>
+                  )
+                ) : (
+                  <span />
+                )}
+                <div className="bk-foot-actions">
+                  <button type="button" className="bk-btn-ghost label" onClick={() => close()} disabled={pending || removing}>
+                    cancel
+                  </button>
+                  <button type="button" className="bk-btn-save label" onClick={handleSave} disabled={pending || loading || removing}>
+                    {pending ? "saving…" : variant === "edit" ? "save changes" : "create booking"}
+                  </button>
+                </div>
               </div>
             </footer>
           </div>
