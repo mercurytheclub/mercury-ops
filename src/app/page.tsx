@@ -2,6 +2,7 @@ import { loadTrips } from "@/server/airtable";
 import { Wordmark } from "./components/Wordmark";
 import { TripsList } from "./components/TripsList";
 import { SignOut } from "./components/SignOut";
+import { Welcome } from "./components/Welcome";
 import { color } from "@brand";
 
 // Server component: reads Airtable directly through the server-only loader.
@@ -16,6 +17,7 @@ export default async function Home() {
   return (
     <main style={{ minHeight: "100vh", padding: "6vh 6vw", display: "flex", flexDirection: "column", gap: "2.5rem" }}>
       <SignOut />
+      <Welcome />
       <header style={{ display: "flex", justifyContent: "center", paddingBottom: "0.5rem" }}>
         <Wordmark size={30} />
       </header>

@@ -48,6 +48,39 @@ a { color: var(--mercury-blue); text-decoration: none; }
 }
 .signout-btn:hover { opacity: 1; color: var(--mercury-blue); }
 
+/* ─── Welcome (post-sign-in greeting) ──────────────────────────────────── */
+.welcome {
+  position: fixed;
+  top: 1.25rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1200;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: rgba(14, 14, 14, 0.92);
+  backdrop-filter: blur(14px) saturate(1.2);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+  border: 1px solid var(--mercury-rule-2);
+  border-radius: 999px;
+  padding: 0.6rem 1.25rem;
+  font-size: 0.95rem;
+  white-space: nowrap;
+  max-width: calc(100vw - 2rem);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5);
+  animation: welcome-in 0.42s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.welcome-spark { color: var(--mercury-blue); font-size: 0.85rem; }
+.welcome-leaving { animation: welcome-out 0.5s ease forwards; }
+@keyframes welcome-in {
+  from { opacity: 0; transform: translate(-50%, -14px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+@keyframes welcome-out {
+  from { opacity: 1; transform: translate(-50%, 0); }
+  to { opacity: 0; transform: translate(-50%, -14px); }
+}
+
 /* ─── Agenda (Today / ops) ─────────────────────────────────────────────── */
 .agenda-pill {
   font-family: var(--font-mono), monospace;
