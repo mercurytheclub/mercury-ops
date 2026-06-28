@@ -38,7 +38,10 @@ a { color: var(--mercury-blue); text-decoration: none; }
 /* ─── Account (top-right SSO menu) ─────────────────────────────────────── */
 .account {
   position: fixed;
-  top: 1rem;
+  /* Vertically centered on the wordmark: the logo sits at 6vh and is
+     clamp(18px,5.5vw,30px) tall (mirrors Wordmark size=30); half that minus
+     half the 36px trigger lands the icon's center on the logo's center. */
+  top: calc(6vh + clamp(18px, 5.5vw, 30px) / 2 - 18px);
   right: 1.5rem;
   z-index: 50;
   animation: account-fade 0.4s ease both;
