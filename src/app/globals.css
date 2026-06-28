@@ -45,40 +45,43 @@ a { color: var(--mercury-blue); text-decoration: none; }
 }
 @keyframes account-fade { from { opacity: 0; } to { opacity: 1; } }
 
+/* trigger — a simple line-art person glyph in a hairline circle. Monochrome:
+   dim white, going cyan (the single accent) on hover/open. No photo, no fill. */
 .account-trigger {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
   padding: 0;
   background: none;
   border: 0;
   cursor: pointer;
   border-radius: 999px;
-  line-height: 0;
+  color: rgba(255, 255, 255, 0.5);
+  box-shadow: 0 0 0 1px var(--mercury-rule-2);
+  transition: color 0.18s ease, box-shadow 0.18s ease;
 }
-.account-trigger:focus-visible { outline: none; }
-.account-trigger:focus-visible .account-avatar { box-shadow: 0 0 0 1px var(--mercury-blue); }
+.account-trigger:hover,
+.account-trigger.is-open,
+.account-trigger:focus-visible {
+  color: var(--mercury-blue);
+  box-shadow: 0 0 0 1px var(--mercury-blue);
+  outline: none;
+}
+.account-icon { display: block; width: 19px; height: 19px; }
 
-/* avatar — shared sizing + hairline ring; ring goes cyan on hover/open */
-.account-avatar, .account-avatar-lg {
-  display: block;
+/* menu header — same person glyph, slightly larger, in its own hairline circle */
+.account-head-avatar {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 40px;
+  height: 40px;
   border-radius: 999px;
-  object-fit: cover;
-  background: #141414;
+  color: rgba(255, 255, 255, 0.55);
   box-shadow: 0 0 0 1px var(--mercury-rule-2);
 }
-.account-avatar { width: 34px; height: 34px; transition: box-shadow 0.18s ease; }
-.account-avatar-lg { width: 42px; height: 42px; }
-.account-trigger:hover .account-avatar,
-.account-trigger.is-open .account-avatar { box-shadow: 0 0 0 1px var(--mercury-blue); }
-
-/* monogram fallback when there's no Google photo */
-.account-monogram {
-  display: inline-grid;
-  place-items: center;
-  font-family: var(--font-mono), monospace;
-  letter-spacing: 0.04em;
-  color: var(--mercury-white);
-}
-.account-avatar.account-monogram { font-size: 0.7rem; }
-.account-avatar-lg.account-monogram { font-size: 0.86rem; }
+.account-icon-lg { display: block; width: 22px; height: 22px; }
 
 /* dropdown panel */
 .account-menu {
