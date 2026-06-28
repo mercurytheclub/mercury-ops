@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { inconsolata, atkinson } from "./fonts";
 import { InitialLoader } from "./components/InitialLoader";
 import { Toaster } from "./components/Toast";
+import { ProfileMenu } from "./components/ProfileMenu";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -14,6 +15,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={`${inconsolata.variable} ${atkinson.variable}`}>
       <body>
         <InitialLoader />
+        <ProfileMenu />
         {children}
         <Toaster />
       </body>

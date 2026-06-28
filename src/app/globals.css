@@ -35,18 +35,120 @@ a { color: var(--mercury-blue); text-decoration: none; }
 }
 .login-btn:hover { border-color: var(--mercury-blue); background: rgba(82, 165, 211, 0.06); }
 
-.signout-form { position: fixed; top: 1.1rem; right: 1.4rem; z-index: 40; }
-.signout-btn {
+/* ─── Account (top-right SSO menu) ─────────────────────────────────────── */
+.account {
+  position: fixed;
+  top: 1rem;
+  right: 1.5rem;
+  z-index: 50;
+  animation: account-fade 0.4s ease both;
+}
+@keyframes account-fade { from { opacity: 0; } to { opacity: 1; } }
+
+.account-trigger {
+  padding: 0;
   background: none;
   border: 0;
   cursor: pointer;
-  color: var(--mercury-white);
-  opacity: 0.4;
-  font-size: 0.6rem;
-  padding: 0.3rem 0.4rem;
-  transition: opacity 0.15s, color 0.15s;
+  border-radius: 999px;
+  line-height: 0;
 }
-.signout-btn:hover { opacity: 1; color: var(--mercury-blue); }
+.account-trigger:focus-visible { outline: none; }
+.account-trigger:focus-visible .account-avatar { box-shadow: 0 0 0 1px var(--mercury-blue); }
+
+/* avatar — shared sizing + hairline ring; ring goes cyan on hover/open */
+.account-avatar, .account-avatar-lg {
+  display: block;
+  border-radius: 999px;
+  object-fit: cover;
+  background: #141414;
+  box-shadow: 0 0 0 1px var(--mercury-rule-2);
+}
+.account-avatar { width: 34px; height: 34px; transition: box-shadow 0.18s ease; }
+.account-avatar-lg { width: 42px; height: 42px; }
+.account-trigger:hover .account-avatar,
+.account-trigger.is-open .account-avatar { box-shadow: 0 0 0 1px var(--mercury-blue); }
+
+/* monogram fallback when there's no Google photo */
+.account-monogram {
+  display: inline-grid;
+  place-items: center;
+  font-family: var(--font-mono), monospace;
+  letter-spacing: 0.04em;
+  color: var(--mercury-white);
+}
+.account-avatar.account-monogram { font-size: 0.7rem; }
+.account-avatar-lg.account-monogram { font-size: 0.86rem; }
+
+/* dropdown panel */
+.account-menu {
+  position: absolute;
+  top: calc(100% + 0.55rem);
+  right: 0;
+  width: 270px;
+  background: rgba(16, 16, 16, 0.98);
+  backdrop-filter: blur(16px) saturate(1.1);
+  -webkit-backdrop-filter: blur(16px) saturate(1.1);
+  border: 1px solid var(--mercury-rule);
+  border-radius: 14px;
+  padding: 0.5rem;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.6);
+  transform-origin: top right;
+  animation: account-pop 0.16s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes account-pop {
+  from { opacity: 0; transform: translateY(-6px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.account-head {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.55rem 0.6rem 0.65rem;
+}
+.account-id { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; }
+.account-name {
+  font-family: var(--font-body), system-ui, sans-serif;
+  font-size: 0.92rem;
+  color: var(--mercury-white);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.account-email {
+  font-family: var(--font-mono), monospace;
+  font-size: 0.66rem;
+  letter-spacing: 0.02em;
+  color: var(--mercury-white);
+  opacity: 0.45;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.account-rule { height: 1px; background: var(--mercury-rule); margin: 0.15rem 0.3rem 0.35rem; }
+
+.account-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.6rem;
+  border-radius: 9px;
+  font-family: var(--font-body), system-ui, sans-serif;
+  font-size: 0.86rem;
+  color: var(--mercury-white);
+  background: none;
+  border: 0;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.14s ease, color 0.14s ease;
+}
+.account-item:hover { background: rgba(255, 255, 255, 0.05); }
+.account-item-ext { opacity: 0.4; font-size: 0.8rem; }
+.account-item:hover .account-item-ext { opacity: 0.7; }
+.account-item-btn:hover { color: var(--mercury-blue); }
 
 /* ─── Agenda (Today / ops) ─────────────────────────────────────────────── */
 .agenda-pill {

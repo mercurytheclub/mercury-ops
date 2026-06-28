@@ -1,6 +1,5 @@
 import { loadAgenda } from "@/server/agenda";
 import { Wordmark } from "@/app/components/Wordmark";
-import { SignOut } from "@/app/components/SignOut";
 import { color } from "@brand";
 
 // Cross-trip data, recomputed often — keep it fresh.
@@ -51,7 +50,6 @@ export default async function TodayPage({
 
   return (
     <main style={{ minHeight: "100vh", padding: "6vh 6vw", display: "flex", flexDirection: "column", gap: "2.5rem", maxWidth: 920, margin: "0 auto" }}>
-      <SignOut />
       <header style={{ display: "flex", justifyContent: "center", paddingBottom: "0.5rem" }}>
         <Wordmark size={30} />
       </header>
