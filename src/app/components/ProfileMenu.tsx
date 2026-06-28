@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import { signOutAction } from "@/app/auth-actions";
 
 type SessionUser = { name?: string | null; email?: string | null };
@@ -27,9 +28,11 @@ function PersonIcon({ className }: { className?: string }) {
 
 // Top-right account control. Reads the SSO session client-side (so pages stay
 // statically cached) and opens a menu with the signed-in profile and sign-out.
-// Renders nothing until a session resolves — so it's invisible on the login
-// page and on unauthenticated loads.
+// Hidden on the login page (it lives in the root layout, so it persists across
+// the sign-out navigation and would otherwise keep stale session state) and
+// until a session resolves.
 export function ProfileMenu() {
+  const pathname = usePathname();
   const [user, setUser] = useState<SessionUser | null>(null);
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -66,7 +69,7 @@ export function ProfileMenu() {
     };
   }, [open]);
 
-  if (!user) return null;
+  if (pathname === "/login" || !user) return null;
 
   const name = (user.name || "").trim();
   const email = (user.email || "").trim();
