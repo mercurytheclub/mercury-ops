@@ -38,15 +38,18 @@ a { color: var(--mercury-blue); text-decoration: none; }
 /* ─── Account (top-right SSO menu) ─────────────────────────────────────── */
 .account {
   position: fixed;
-  /* Vertically centered on the wordmark: the logo sits at 6vh and is
-     clamp(18px,5.5vw,30px) tall (mirrors Wordmark size=30); half that minus
-     half the 36px trigger lands the icon's center on the logo's center. */
-  top: calc(6vh + clamp(18px, 5.5vw, 30px) / 2 - 18px);
+  top: 1rem;
   right: 1.5rem;
   z-index: 50;
   animation: account-fade 0.4s ease both;
 }
 @keyframes account-fade { from { opacity: 0; } to { opacity: 1; } }
+
+/* Lift the centered wordmark onto the account icon's line (the icon stays put
+   at top:1rem). Each page reserves 6vh of top padding; cancelling it for the
+   masthead leaves the logo at a fixed ~1.2rem, so its center meets the icon.
+   All three signed-in pages share this 6vh header, so one rule aligns them. */
+main > header:first-child { margin-top: calc(1.2rem - 6vh); }
 
 /* trigger — a simple line-art person glyph in a hairline circle. Monochrome:
    dim white, going cyan (the single accent) on hover/open. No photo, no fill. */
