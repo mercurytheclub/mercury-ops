@@ -481,20 +481,21 @@ const loadVillas: Loader = async (guests, tripCode) => {
 type CarRow = {
   id: string;
   fields: {
-    "Service Type"?: string[];
+    // Field names match the Airtable Car Service table exactly: it uses the
+    // one-word "Pickup" and hyphenated "Drop-off" (not "Pick Up"/"Drop Off").
+    "Service Mode"?: string;
     "Vehicle Type"?: string;
-    "Supplier"?: string;
     "Confirmation #"?: string;
     "Driver Name"?: string;
     "Driver Phone"?: string;
-    "Pick Up Address"?: string;
-    "Pick Up (Short)"?: string;
-    "Drop Off (Short)"?: string;
-    "Pick Up Date"?: string;
-    "Pick Up Time"?: string;
-    "Drop Off Address"?: string;
-    "Drop Off Date"?: string;
-    "Drop Off Time"?: string;
+    "Pickup Address"?: string;
+    "Pickup (Short)"?: string;
+    "Drop-off (Short)"?: string;
+    "Pickup Date"?: string;
+    "Pickup Time"?: string;
+    "Drop-off Address"?: string;
+    "Drop-off Date"?: string;
+    "Drop-off Time"?: string;
     "Duration"?: string;
     "Sedan"?: number;
     "SUV"?: number;
@@ -519,27 +520,26 @@ const loadCars: Loader = async (guests, tripCode) => {
     const f = row.fields;
     if (isCancelled(f["Status"])) continue;
     const tripId = linkedIds(f["Trip ID"])[0];
-    const startAt = combineDateTime(f["Pick Up Date"], f["Pick Up Time"]);
+    const startAt = combineDateTime(f["Pickup Date"], f["Pickup Time"]);
     if (!tripId || !startAt) continue;
-    const route = [text(f["Pick Up (Short)"]), text(f["Drop Off (Short)"])].filter(Boolean);
+    const route = [text(f["Pickup (Short)"]), text(f["Drop-off (Short)"])].filter(Boolean);
     const vehicles = CAR_VEHICLES.filter((v) => Number(f[v]) > 0).map((v) => `${f[v]}× ${v}`).join(", ");
     out.push({
       id: `car-${row.id}`,
       category: "car",
       startAt,
-      endAt: combineDateTime(f["Drop Off Date"], f["Drop Off Time"]),
+      endAt: combineDateTime(f["Drop-off Date"], f["Drop-off Time"]),
       title: route.length ? route.join(" → ") : text(f["Vehicle Type"]) ?? "Car service",
-      subtitle: (f["Service Type"] ?? []).join(" · ") || text(f["Vehicle Type"]),
-      location: text(f["Pick Up Address"]),
+      subtitle: text(f["Service Mode"]) ?? text(f["Vehicle Type"]),
+      location: text(f["Pickup Address"]),
       guests: resolveGuestNames(guests, f["Lead Guest"], f["Companions"]),
       confirmation: text(f["Confirmation #"]),
       admin: {
         cost: [],
         details: detailsOf(
-          ["Supplier", text(f["Supplier"])],
           ["Driver", contactOf(f["Driver Name"], f["Driver Phone"])],
-          ["Pick-up", joinDot(whenStr(f["Pick Up Date"], f["Pick Up Time"]), text(f["Pick Up Address"]))],
-          ["Drop-off", joinDot(whenStr(f["Drop Off Date"], f["Drop Off Time"]), text(f["Drop Off Address"]))],
+          ["Pick-up", joinDot(whenStr(f["Pickup Date"], f["Pickup Time"]), text(f["Pickup Address"]))],
+          ["Drop-off", joinDot(whenStr(f["Drop-off Date"], f["Drop-off Time"]), text(f["Drop-off Address"]))],
           ["Duration", text(f["Duration"])],
           ["Vehicles", vehicles],
           ["Confirmation #", text(f["Confirmation #"])],
