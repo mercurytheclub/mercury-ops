@@ -43,6 +43,8 @@ export type BookingTypeConfig = {
 };
 
 const STATUS_ACTIVE_CANCELLED = ["Active", "Cancelled"];
+// Car Service Pickup/Drop-off Type — mirrors the table's single-select options.
+const CAR_ENDPOINT_TYPES = ["Airport", "Train Station", "Hotel", "Villa", "Cruise Port", "Heliport", "Home Residence", "Yacht Anchorage", "Restaurant", "Activity", "Other"];
 
 export const BOOKING_CONFIG: Record<BookingType, BookingTypeConfig> = {
   restaurant: {
@@ -98,19 +100,22 @@ export const BOOKING_CONFIG: Record<BookingType, BookingTypeConfig> = {
     label: "car service",
     tableId: "tblDLF5H4wuOmrAPq",
     defaultStatus: { field: "Status", value: "Active" },
-    link: { titleField: "Supplier", dateField: "Pick Up Date", timeField: "Pick Up Time" },
+    link: { titleField: "Pickup (Short)", dateField: "Pickup Date", timeField: "Pickup Time" },
     fields: [
-      { name: "Service Type", label: "Service type", kind: "multiselect", options: ["Airport Arrival", "Airport Departure", "Train Station Arrival", "Train Station Departure", "Point to Point", "Hourly (At Disposal)"] },
-      { name: "Supplier", label: "Supplier", kind: "text", placeholder: "e.g. Blacklane, Empire CLS, local DMC…" },
-      { name: "Confirmation #", label: "Confirmation #", kind: "text", half: true, placeholder: "Supplier reference" },
-      { name: "Status", label: "Active / cancelled / on request", kind: "select", half: true, options: ["Active", "Cancelled", "On Request"] },
-      { name: "Pick Up Address", label: "Pick-up address", kind: "text", placeholder: "Address / location" },
-      { name: "Pick Up Date", label: "Pick-up date", kind: "date", half: true },
-      { name: "Pick Up Time", label: "Pick-up time", kind: "time", half: true, placeholder: "e.g. 9:00 AM" },
-      { name: "Drop Off Address", label: "Drop-off address", kind: "text", placeholder: "Address / location" },
-      { name: "Drop Off Date", label: "Drop-off date", kind: "date", half: true },
-      { name: "Drop Off Time", label: "Drop-off time", kind: "time", half: true, placeholder: "e.g. 11:00 AM" },
+      // Service Mode replaces the deprecated "Service Type"; Pickup/Drop-off Type
+      // describe the endpoints. Names + options match the Airtable table exactly.
+      { name: "Service Mode", label: "Service mode", kind: "select", half: true, options: ["Transfer", "Hourly (At Disposal)"] },
+      { name: "Status", label: "Active / on request / cancelled", kind: "select", half: true, options: ["Active", "On Request", "Modification Requested", "Cancelled"] },
+      { name: "Pickup Type", label: "Pick-up type", kind: "select", half: true, options: CAR_ENDPOINT_TYPES },
+      { name: "Drop-off Type", label: "Drop-off type", kind: "select", half: true, options: CAR_ENDPOINT_TYPES },
+      { name: "Pickup Address", label: "Pick-up address", kind: "text", placeholder: "Address / location" },
+      { name: "Pickup Date", label: "Pick-up date", kind: "date", half: true },
+      { name: "Pickup Time", label: "Pick-up time", kind: "time", half: true, placeholder: "e.g. 9:00 AM" },
+      { name: "Drop-off Address", label: "Drop-off address", kind: "text", placeholder: "Address / location" },
+      { name: "Drop-off Date", label: "Drop-off date", kind: "date", half: true },
+      { name: "Drop-off Time", label: "Drop-off time", kind: "time", half: true, placeholder: "e.g. 11:00 AM" },
       { name: "Duration", label: "Duration", kind: "text", half: true, placeholder: "e.g. 4 hours" },
+      { name: "Confirmation #", label: "Confirmation #", kind: "text", half: true, placeholder: "Supplier reference" },
       { name: "Driver Name", label: "Driver name", kind: "text", half: true },
       { name: "Driver Phone", label: "Driver phone", kind: "phone", half: true },
       // Vehicle counts — compact number fields.
@@ -203,7 +208,9 @@ export const LINK_CONFIG: Record<LinkableType, LinkMeta> = {
 
 export const LINKABLE_TYPES = Object.keys(LINK_CONFIG) as LinkableType[];
 
-/** Search hint per type — most search by name, car/greeter by supplier. */
+/** Search hint per type — most search by name, greeter by supplier, car by pickup. */
 export function linkSearchHint(type: LinkableType): string {
-  return type === "car" || type === "greeter" ? "search by supplier…" : "search by name…";
+  if (type === "greeter") return "search by supplier…";
+  if (type === "car") return "search by pick-up location…";
+  return "search by name…";
 }
