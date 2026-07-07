@@ -13,10 +13,17 @@ function allowedEmails(): string[] {
     .filter(Boolean);
 }
 
-/** Is this email approved for ops? (used by the sign-in gate) */
+/**
+ * Is this email approved for ops? (used by the sign-in gate)
+ * Allowlist entries may be a full email (exact match) or a whole domain written
+ * as "@example.com" (matches any address on that domain).
+ */
 export function isAllowed(email: string | null | undefined): boolean {
   if (!email) return false;
-  return allowedEmails().includes(email.toLowerCase());
+  const e = email.toLowerCase().trim();
+  const at = e.indexOf("@");
+  const domain = at >= 0 ? e.slice(at) : ""; // e.g. "@matthewassistants.com"
+  return allowedEmails().some((entry) => (entry.startsWith("@") ? entry === domain : entry === e));
 }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
