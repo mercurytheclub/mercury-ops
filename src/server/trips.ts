@@ -107,7 +107,7 @@ export async function createTrip(input: CreateTripInput): Promise<CreateTripResu
 
     const trip: OpsTrip = {
       tripCode: (saved.fields["Trip ID"] as string) || saved.id,
-      name: (saved.fields["External Trip Name"] as string) || deriveName(destination, start),
+      name: (saved.fields["Internal Trip Name"] as string) || (saved.fields["External Trip Name"] as string) || deriveName(destination, start),
       startDate: start,
       endDate: end,
       leadGuest: leadName || "—",

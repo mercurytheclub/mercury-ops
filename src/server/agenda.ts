@@ -124,7 +124,7 @@ export async function loadAgenda(fromDate: string, toDate: string): Promise<Agen
   const tripById = new Map(
     trips.map((t) => [
       t.id,
-      { code: (t.fields["Trip ID"] ?? t.id) as string, name: (t.fields["External Trip Name"] ?? t.fields["Trip ID"] ?? "trip") as string },
+      { code: (t.fields["Trip ID"] ?? t.id) as string, name: (t.fields["Internal Trip Name"] ?? t.fields["External Trip Name"] ?? t.fields["Trip ID"] ?? "trip") as string },
     ]),
   );
 

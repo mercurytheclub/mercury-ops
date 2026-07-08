@@ -233,6 +233,9 @@ export type TripAirtableRow = {
   id: string;
   fields: {
     "Trip ID"?: string;
+    // Internal = "Last Name - Destination - Month" (what ops shows); External =
+    // destination only (guest-facing).
+    "Internal Trip Name"?: string;
     "External Trip Name"?: string;
     "Trip Start Date"?: string;
     "Trip End Date"?: string;
@@ -294,7 +297,7 @@ export const loadTrips = makeCached(async (): Promise<OpsTrip[]> => {
     const end = f["Trip End Date"] ?? null;
     return {
       tripCode: f["Trip ID"] ?? row.id,
-      name: f["External Trip Name"] ?? f["Trip ID"] ?? "untitled trip",
+      name: f["Internal Trip Name"] ?? f["External Trip Name"] ?? f["Trip ID"] ?? "untitled trip",
       startDate: start,
       endDate: end,
       leadGuest: (leadIds[0] && guests.get(leadIds[0])) || "—",

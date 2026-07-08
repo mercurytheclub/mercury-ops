@@ -1275,7 +1275,7 @@ function buildItinerary(
   return {
     tripCode,
     tripRecordId: trip.id,
-    name: f["External Trip Name"] ?? tripCode,
+    name: f["Internal Trip Name"] ?? f["External Trip Name"] ?? tripCode,
     startDate,
     endDate,
     status: f["Status"] ?? null,
