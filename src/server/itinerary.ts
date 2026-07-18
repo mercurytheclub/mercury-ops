@@ -216,6 +216,11 @@ function masterName(field: unknown, names: Map<string, string>): string | null {
 type FlightRow = {
   id: string;
   fields: {
+    // Airtable renamed "Flight Number" → "Flight Number (Operating Airline)"
+    // in the 2026-07-16 codeshare migration (and "Airline" → "Operating
+    // Airline"). Read the new name first, legacy as fallback so a rename in
+    // either direction can't silently blank every flight number again.
+    "Flight Number (Operating Airline)"?: string;
     "Flight Number"?: string;
     "Trip ID"?: LinkedRecord[];
     "Guest"?: LinkedRecord[];
@@ -261,7 +266,7 @@ const loadFlights: Loader = async (guests, tripCode) => {
     const tripId = linkedIds(f["Trip ID"])[0];
     const startAt = combineDateTime(f["Flight Departure Date"], f["Flight Departure Time"]);
     if (!tripId || !startAt) continue;
-    const flightNo = f["Flight Number"] ?? "—";
+    const flightNo = f["Flight Number (Operating Airline)"] ?? f["Flight Number"] ?? "—";
     const key = `${tripId}|${flightNo}|${startAt.slice(0, 10)}`;
     const guestNames = resolveGuestNames(guests, f["Guest"]);
     // Codeshare (ops-only): the marketing airline the ticket was sold under,
