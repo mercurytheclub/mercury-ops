@@ -199,6 +199,9 @@ function nameMapLoader(tableId: string, primaryField: string) {
 const loadHotelNames = nameMapLoader("tblPnBimrs9eLjooQ", "Hotel Name");
 const loadRestaurantNames = nameMapLoader("tblxpKxRFuytOAawA", "Restaurant Name");
 const loadActivityNames = nameMapLoader("tblawM4QCpAm01P8w", "Activity Name");
+// Airlines master — resolves a flight's linked "Codeshare Airline" to its name.
+// Ops-only: the codeshare is surfaced in this admin view, never in the guest app.
+const loadAirlineNames = nameMapLoader("tblSKy35woGrE6EcC", "Airline Name");
 
 /** First linked master name, or null. */
 function masterName(field: unknown, names: Map<string, string>): string | null {
@@ -223,6 +226,11 @@ type FlightRow = {
     "Flight Arrival Date"?: string;
     "Flight Arrival Time"?: string;
     "Cabin"?: string;
+    // Codeshare: the marketing airline the ticket was sold under, linked to the
+    // Airlines master. Ops-facing only for now — not surfaced in the guest app.
+    "Codeshare"?: boolean;
+    "Codeshare Airline"?: LinkedRecord[];
+    "Flight Number (Codeshare Airline)"?: string;
     "Seat Assignment"?: string;
     "Record Locator"?: string;
     "GDS PNR"?: string;
@@ -242,7 +250,10 @@ type FlightRow = {
 };
 
 const loadFlights: Loader = async (guests, tripCode) => {
-  const rows = await fetchAllPages<FlightRow>("tblElrgipumvI2yna", tripFilter(tripCode));
+  const [rows, airlineNames] = await Promise.all([
+    fetchAllPages<FlightRow>("tblElrgipumvI2yna", tripFilter(tripCode)),
+    loadAirlineNames(),
+  ]);
   const byKey = new Map<string, Reservation>();
   for (const row of rows) {
     const f = row.fields;
@@ -253,6 +264,13 @@ const loadFlights: Loader = async (guests, tripCode) => {
     const flightNo = f["Flight Number"] ?? "—";
     const key = `${tripId}|${flightNo}|${startAt.slice(0, 10)}`;
     const guestNames = resolveGuestNames(guests, f["Guest"]);
+    // Codeshare (ops-only): the marketing airline the ticket was sold under,
+    // plus its flight number when present. Guarded on the airline so a stray
+    // flight number never shows up mislabelled as an airline.
+    const codeshareAirline = masterName(f["Codeshare Airline"], airlineNames);
+    const codeshare = codeshareAirline
+      ? joinDot(codeshareAirline, f["Flight Number (Codeshare Airline)"])
+      : "";
     let res = byKey.get(key);
     if (!res) {
       res = {
@@ -276,6 +294,7 @@ const loadFlights: Loader = async (guests, tripCode) => {
             ["Departs", whenStr(f["Flight Departure Date"], f["Flight Departure Time"])],
             ["Arrives", whenStr(f["Flight Arrival Date"], f["Flight Arrival Time"])],
             ["Cabin", f["Cabin"]],
+            ["Codeshare airline", codeshare],
             ["Seat", f["Seat Assignment"]],
             ["Record locator", f["Record Locator"]],
             ["GDS PNR", f["GDS PNR"]],
