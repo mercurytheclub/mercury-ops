@@ -88,10 +88,14 @@ async function loadSource(
     const f = r.fields;
     if (f["Dummy Flight"] === true) continue;
     const startAt = combineDateTime(f[src.dateField], src.timeField ? f[src.timeField] : null);
-    const tripId = linkedIds(f["Trip ID"])[0];
-    if (!startAt || !tripId) continue;
-    const trip = tripById.get(tripId);
-    if (!trip) continue;
+    // A booking can be linked to SEVERAL trips — two households sharing one car
+    // while keeping separate itineraries. The agenda is the desk's day view, so
+    // it wants one line per trip: the concierge is running both. Taking only the
+    // first link hid the ride from whichever trip lost the coin toss.
+    const trips = linkedIds(f["Trip ID"])
+      .map((id) => tripById.get(id))
+      .filter((t): t is NonNullable<typeof t> => !!t);
+    if (!startAt || trips.length === 0) continue;
 
     let title: string;
     if (src.route) {
@@ -102,17 +106,21 @@ async function loadSource(
       title = txt(f[src.titleField ?? ""]) || src.label.toLowerCase();
     }
 
-    out.push({
-      id: `${src.category}-${r.id}`,
-      category: src.category,
-      label: src.label,
-      startAt,
-      time: src.timeField ? txt(f[src.timeField]) || null : null,
-      title,
-      tripCode: trip.code,
-      tripName: trip.name,
-      guest: resolveGuestNames(guests, ...src.guestFields.map((k) => f[k]))[0] ?? null,
-    });
+    for (const trip of trips) {
+      out.push({
+        // The trip is part of the id: one shared booking yields one row per
+        // trip, and two rows sharing a React key would collapse to one.
+        id: `${src.category}-${r.id}-${trip.code}`,
+        category: src.category,
+        label: src.label,
+        startAt,
+        time: src.timeField ? txt(f[src.timeField]) || null : null,
+        title,
+        tripCode: trip.code,
+        tripName: trip.name,
+        guest: resolveGuestNames(guests, ...src.guestFields.map((k) => f[k]))[0] ?? null,
+      });
+    }
   }
   return out;
 }

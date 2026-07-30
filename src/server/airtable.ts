@@ -130,9 +130,32 @@ export async function fetchAllPages<T>(
   return all;
 }
 
-/** Airtable filter scoping a booking table to one trip via its linked Trip ID. */
+/**
+ * Airtable filter scoping a booking table to one trip via its linked Trip ID.
+ *
+ * "Trip ID" is a LINK field and a booking may name several trips — two
+ * households sharing one car, each keeping their own itinerary. ARRAYJOIN then
+ * yields "TR00000220,TR00000221", so the old `ARRAYJOIN({Trip ID})="TR…"`
+ * equality matched NEITHER trip and the booking vanished from both.
+ *
+ * Membership instead: wrap the joined text in commas and look for ",<code>,".
+ * The wrapping is what stops TR00000022 matching TR00000221 — a bare FIND
+ * would.
+ *
+ * ⚠️ ARRAYJOIN's separator argument is a NO-OP on a link field. Airtable
+ * coerces `{Trip ID}` to a single text value BEFORE ARRAYJOIN sees it, so both
+ * `ARRAYJOIN({Trip ID})` and `ARRAYJOIN({Trip ID}, ",")` return
+ * "TR00000220, TR00000221" — comma plus SPACE — and `COUNTA({Trip ID})` is 1.
+ * (Verified against the live base: without the SUBSTITUTE, TR00000220 returned
+ * both shared cars and TR00000221 returned none, because every code after the
+ * first is preceded by a space.) SUBSTITUTE normalises ", " to "," first.
+ */
 export function tripFilter(tripCode: string): string {
-  return `ARRAYJOIN({Trip ID})="${tripCode}"`;
+  // Airtable formulas have no bind parameters, so the code is concatenated in.
+  // Trip codes are `TR` + digits; anything else cannot address a trip and must
+  // not be pasted into a formula. `FALSE()` matches no rows.
+  if (!/^[A-Za-z0-9_-]{1,32}$/.test(tripCode)) return "FALSE()";
+  return `FIND(",${tripCode},", "," & SUBSTITUTE(ARRAYJOIN({Trip ID}), ", ", ",") & ",") > 0`;
 }
 
 // Airtable returns linked-record fields as bare arrays of record IDs.
