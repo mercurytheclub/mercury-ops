@@ -57,14 +57,18 @@ export async function searchLinkableBookingsAction(
   return searchLinkableBookings(type, tripCode, query);
 }
 
-/** Attach an existing booking to a trip, then refresh the itinerary + list. */
+/** Share an existing booking onto a trip, then refresh the itinerary + list. */
 export async function linkBookingAction(input: {
   type: LinkableType;
   recordId: string;
   tripRecordId: string;
   tripCode: string;
   date?: string | null;
-  /** Trips the booking is moving off of — refresh their itineraries too. */
+  /**
+   * Trips that already show this booking. Linking no longer takes it off them,
+   * so their days are unchanged — revalidated anyway because a cached render
+   * from before the share is the one place the two views could disagree.
+   */
   fromTripCodes?: string[];
 }): Promise<SaveResult> {
   const res = await linkBooking(input);

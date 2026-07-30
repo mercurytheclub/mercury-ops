@@ -136,7 +136,11 @@ export function LinkBookingEditor({
         fromTripCodes: selected.otherTripCodes,
       });
       if (res.ok) {
-        showToast(`${selected.title} linked to ${tripName}`);
+        showToast(
+          selected.otherTripCodes.length
+            ? `${selected.title} now on ${tripName} too`
+            : `${selected.title} linked to ${tripName}`,
+        );
         close();
         router.refresh();
       } else {
@@ -232,19 +236,35 @@ export function LinkBookingEditor({
                   </div>
                   {selected.otherTripCodes.length ? (
                     <p className="lb-hint" style={{ marginTop: 0 }}>
-                      this booking is on {selected.otherTripCodes.join(", ")} — linking moves it to {tripName}.
+                      this booking is on {selected.otherTripCodes.join(", ")} — linking adds it to {tripName} as
+                      well, and it stays on {selected.otherTripCodes.length > 1 ? "those trips" : "that trip"}.
                     </p>
                   ) : null}
 
-                  <label className="bk-field">
-                    <span className="bk-label label">Appears on</span>
-                    <input className="bk-input" type="date" value={placeOn} onChange={(e) => setPlaceOn(e.target.value)} />
-                    <span className="lb-hint">
-                      {placeOn && placeOn !== selected.date
-                        ? "moves the booking to this day (keeps its time)"
-                        : "leave as-is to keep the booking on its own date"}
-                    </span>
-                  </label>
+                  {/* One record sits behind both itineraries, so its date is shared.
+                      Offering "appears on" here would let this screen re-date another
+                      household's day without naming them — so it isn't offered.
+                      linkBooking ignores the date on a shared booking regardless. */}
+                  {selected.otherTripCodes.length ? (
+                    <div className="bk-field">
+                      <span className="bk-label label">Appears on</span>
+                      <span style={{ fontSize: "1.05rem" }}>{fmtDate(selected.date)}</span>
+                      <span className="lb-hint">
+                        shared with {selected.otherTripCodes.join(", ")} — change the date on the booking itself,
+                        as it moves on every trip at once.
+                      </span>
+                    </div>
+                  ) : (
+                    <label className="bk-field">
+                      <span className="bk-label label">Appears on</span>
+                      <input className="bk-input" type="date" value={placeOn} onChange={(e) => setPlaceOn(e.target.value)} />
+                      <span className="lb-hint">
+                        {placeOn && placeOn !== selected.date
+                          ? "moves the booking to this day (keeps its time)"
+                          : "leave as-is to keep the booking on its own date"}
+                      </span>
+                    </label>
+                  )}
 
                   <button type="button" className="bk-btn-ghost label" style={{ alignSelf: "flex-start", paddingLeft: 0 }} onClick={() => setSelected(null)}>
                     ← back to results

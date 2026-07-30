@@ -123,7 +123,7 @@ export type LinkableBooking = {
   title: string;
   date: string | null;
   time: string | null;
-  /** Trip codes this booking is already linked to (shown so the move is clear). */
+  /** Trip codes this booking is already on (shown so a share is never a surprise). */
   otherTripCodes: string[];
 };
 
@@ -174,13 +174,25 @@ export async function searchLinkableBookings(
 }
 
 /**
- * Attach an existing booking to a trip by SETTING its Trip ID to this trip.
- * The itinerary filters bookings with an exact `ARRAYJOIN({Trip ID})="code"`
- * match, so a booking belongs to exactly one trip — a booking already on
- * another trip is moved here (the picker shows its current trip first, and the
- * search excludes anything already on this trip). When `date` is given, the
- * booking is placed on that day; its time field is untouched, so a real
- * reservation keeps its clock time.
+ * Attach an existing booking to a trip by ADDING this trip to its Trip ID.
+ *
+ * Linking **shares**, it does not move. This used to replace the whole link
+ * field, because the itinerary filtered on an exact `ARRAYJOIN({Trip ID})=code`
+ * match and a booking could therefore only ever be on one trip. `tripFilter()`
+ * now matches by membership, so that constraint is gone — and replacing would
+ * silently take the booking off the OTHER household's itinerary from a screen
+ * that never mentions them. That is the same asymmetry `unlinkBooking` already
+ * respects, which makes the two exact inverses: link adds this trip, unlink
+ * removes this trip.
+ *
+ * Idempotent — linking a booking already on this trip is a no-op success.
+ *
+ * `date` places the booking on a given day, leaving its time field alone so a
+ * real reservation keeps its clock time. It is **ignored on an already-shared
+ * booking**: there is one record behind both itineraries, so re-dating it here
+ * would move it on every other trip showing it. The picker hides the date field
+ * in that case; this is the enforcement, since a stale render must not be able
+ * to re-date another household's day.
  */
 export async function linkBooking(input: {
   type: LinkableType;
@@ -192,8 +204,26 @@ export async function linkBooking(input: {
   if (!cfg) return { ok: false, error: "unknown booking type" };
   if (!TOKEN) return { ok: false, error: "no Airtable token" };
 
-  const fields: Record<string, unknown> = { "Trip ID": [input.tripRecordId] };
-  if (input.date) fields[cfg.dateField] = input.date;
+  // Read-modify-write, so every trip already linked survives the patch.
+  let trips: string[];
+  let alreadyShared: boolean;
+  try {
+    const cur = await fetch(api(`${cfg.tableId}/${input.recordId}`), { headers: authHeaders });
+    if (!cur.ok) {
+      const text = await cur.text();
+      return { ok: false, error: `Airtable ${cur.status}: ${text.slice(0, 300)}` };
+    }
+    const row = (await cur.json()) as { fields?: Record<string, unknown> };
+    const existing = linkedIds(row.fields?.["Trip ID"]);
+    if (existing.includes(input.tripRecordId)) return { ok: true, id: input.recordId };
+    alreadyShared = existing.length > 0;
+    trips = [...existing, input.tripRecordId];
+  } catch (err) {
+    return { ok: false, error: String(err) };
+  }
+
+  const fields: Record<string, unknown> = { "Trip ID": trips };
+  if (input.date && !alreadyShared) fields[cfg.dateField] = input.date;
 
   try {
     const res = await fetch(api(`${cfg.tableId}/${input.recordId}`), {
