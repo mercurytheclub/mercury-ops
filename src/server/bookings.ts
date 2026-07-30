@@ -213,23 +213,52 @@ export async function linkBooking(input: {
 }
 
 /**
- * Remove a booking from its trip by clearing its Trip ID link. Non-destructive:
- * the booking record stays in Airtable (an orphan, re-linkable via the picker),
- * it just leaves this trip's itinerary. The inverse of linkBooking.
+ * Remove a booking from ONE trip. Non-destructive: the booking record stays in
+ * Airtable — an orphan once its last trip is removed, re-linkable via the
+ * picker — it just leaves this trip's itinerary. The inverse of linkBooking.
+ *
+ * ⚠️ Removes only the named trip. A booking can be linked to several trips (two
+ * households sharing one car, each on their own itinerary), and the drawer's
+ * button says "removed from trip" — singular. Clearing the whole link field, as
+ * this used to, would take the ride off the OTHER household's itinerary too,
+ * from a screen that never mentioned them. `tripCode` is optional so an
+ * explicit "orphan this booking entirely" caller can still pass nothing.
  */
 export async function unlinkBooking(input: {
   type: BookingType;
   recordId: string;
+  tripCode?: string;
 }): Promise<SaveResult> {
   const cfg = BOOKING_CONFIG[input.type];
   if (!cfg) return { ok: false, error: "unknown booking type" };
   if (!TOKEN) return { ok: false, error: "no Airtable token" };
 
+  let remaining: string[] = [];
+  if (input.tripCode) {
+    // Read-modify-write: keep every OTHER linked trip. Resolving the code to a
+    // record id here (rather than trusting the caller) keeps the drawer honest
+    // even if it is ever opened from a stale render.
+    try {
+      const trips = await loadTripRows();
+      const target = trips.find((t) => (t.fields["Trip ID"] ?? t.id) === input.tripCode);
+      if (!target) return { ok: false, error: `unknown trip ${input.tripCode}` };
+      const cur = await fetch(api(`${cfg.tableId}/${input.recordId}`), { headers: authHeaders });
+      if (!cur.ok) {
+        const text = await cur.text();
+        return { ok: false, error: `Airtable ${cur.status}: ${text.slice(0, 300)}` };
+      }
+      const row = (await cur.json()) as { fields?: Record<string, unknown> };
+      remaining = linkedIds(row.fields?.["Trip ID"]).filter((id) => id !== target.id);
+    } catch (err) {
+      return { ok: false, error: String(err) };
+    }
+  }
+
   try {
     const res = await fetch(api(`${cfg.tableId}/${input.recordId}`), {
       method: "PATCH",
       headers: authHeaders,
-      body: JSON.stringify({ fields: { "Trip ID": [] } }),
+      body: JSON.stringify({ fields: { "Trip ID": remaining } }),
     });
     if (!res.ok) {
       const text = await res.text();

@@ -74,8 +74,6 @@ export type Reservation = {
   guests: string[];
   confirmation: string | null;
   admin: AdminBlock;
-  /** Internal — trip record id used for filtering; stripped before returning. */
-  _tripRecordId: string;
 };
 
 export type ItineraryDay = { date: string; reservations: Reservation[] };
@@ -258,11 +256,16 @@ const loadFlights: Loader = async (guests, tripCode) => {
   for (const row of rows) {
     const f = row.fields;
     if (f["Dummy Flight"] || isCancelled(f["Status"])) continue;
-    const tripId = linkedIds(f["Trip ID"])[0];
+    // A booking may link SEVERAL trips (shared car, shared dinner). tripFilter
+    // already scoped the fetch to this trip; this only rejects an unlinked row.
+    const hasTrip = linkedIds(f["Trip ID"]).length > 0;
     const startAt = combineDateTime(f["Flight Departure Date"], f["Flight Departure Time"]);
-    if (!tripId || !startAt) continue;
+    if (!hasTrip || !startAt) continue;
     const flightNo = f["Flight Number"] ?? "—";
-    const key = `${tripId}|${flightNo}|${startAt.slice(0, 10)}`;
+    // Keyed by the trip being LOADED, not the row's first linked trip: a shared
+    // flight's per-guest rows can list their trips in different orders, and
+    // keying on the first one would split one flight into two cards.
+    const key = `${tripCode}|${flightNo}|${startAt.slice(0, 10)}`;
     const guestNames = resolveGuestNames(guests, f["Guest"]);
     // Codeshare (ops-only): the marketing airline the ticket was sold under,
     // plus its flight number when present. Guarded on the airline so a stray
@@ -305,7 +308,6 @@ const loadFlights: Loader = async (guests, tripCode) => {
             ["Status", f["Status"]],
           ),
         },
-        _tripRecordId: tripId,
       };
       byKey.set(key, res);
     }
@@ -360,9 +362,11 @@ const loadHotels: Loader = async (guests, tripCode) => {
   for (const row of rows) {
     const f = row.fields;
     if (isCancelled(f["Status"])) continue;
-    const tripId = linkedIds(f["Trip ID"])[0];
+    // A booking may link SEVERAL trips (shared car, shared dinner). tripFilter
+    // already scoped the fetch to this trip; this only rejects an unlinked row.
+    const hasTrip = linkedIds(f["Trip ID"]).length > 0;
     const startAt = combineDateTime(f["Check In Date"], f["Check In Time"]);
-    if (!tripId || !startAt) continue;
+    if (!hasTrip || !startAt) continue;
     const cur = text(f["Booking Currency"]) ?? "USD";
     const hotelName = text(f["Hotel Name"]) ?? masterName(f["Hotel"], names) ?? "Hotel";
     out.push({
@@ -402,7 +406,6 @@ const loadHotels: Loader = async (guests, tripCode) => {
           ["Cancellation policy", text(f["Cancellation Policy"])],
         ),
       },
-      _tripRecordId: tripId,
     });
   }
   return out;
@@ -448,9 +451,11 @@ const loadVillas: Loader = async (guests, tripCode) => {
   for (const row of rows) {
     const f = row.fields;
     if (isCancelled(f["Status"])) continue;
-    const tripId = linkedIds(f["Trip ID"])[0];
+    // A booking may link SEVERAL trips (shared car, shared dinner). tripFilter
+    // already scoped the fetch to this trip; this only rejects an unlinked row.
+    const hasTrip = linkedIds(f["Trip ID"]).length > 0;
     const startAt = combineDateTime(f["Check In Date"], null);
-    if (!tripId || !startAt) continue;
+    if (!hasTrip || !startAt) continue;
     const cur = text(f["Currency"]) ?? "USD";
     out.push({
       id: `villa-${row.id}`,
@@ -487,7 +492,6 @@ const loadVillas: Loader = async (guests, tripCode) => {
           ["Cancellation policy", text(f["Cancellation Policy"])],
         ),
       },
-      _tripRecordId: tripId,
     });
   }
   return out;
@@ -538,9 +542,11 @@ const loadCars: Loader = async (guests, tripCode) => {
   for (const row of rows) {
     const f = row.fields;
     if (isCancelled(f["Status"])) continue;
-    const tripId = linkedIds(f["Trip ID"])[0];
+    // A booking may link SEVERAL trips (shared car, shared dinner). tripFilter
+    // already scoped the fetch to this trip; this only rejects an unlinked row.
+    const hasTrip = linkedIds(f["Trip ID"]).length > 0;
     const startAt = combineDateTime(f["Pickup Date"], f["Pickup Time"]);
-    if (!tripId || !startAt) continue;
+    if (!hasTrip || !startAt) continue;
     const route = [text(f["Pickup (Short)"]), text(f["Drop-off (Short)"])].filter(Boolean);
     const vehicles = CAR_VEHICLES.filter((v) => Number(f[v]) > 0).map((v) => `${f[v]}× ${v}`).join(", ");
     out.push({
@@ -564,7 +570,6 @@ const loadCars: Loader = async (guests, tripCode) => {
           ["Confirmation #", text(f["Confirmation #"])],
         ),
       },
-      _tripRecordId: tripId,
     });
   }
   return out;
@@ -604,9 +609,11 @@ const loadRestaurants: Loader = async (guests, tripCode) => {
   for (const row of rows) {
     const f = row.fields;
     if (isCancelled(f["Status"])) continue;
-    const tripId = linkedIds(f["Trip ID"])[0];
+    // A booking may link SEVERAL trips (shared car, shared dinner). tripFilter
+    // already scoped the fetch to this trip; this only rejects an unlinked row.
+    const hasTrip = linkedIds(f["Trip ID"]).length > 0;
     const startAt = combineDateTime(f["Reservation Date"], f["Reservation Time"]);
-    if (!tripId || !startAt) continue;
+    if (!hasTrip || !startAt) continue;
     const name = text(f["Restaurant Name"]) ?? masterName(f["Restaurant"], names) ?? "Restaurant";
     out.push({
       id: `restaurant-${row.id}`,
@@ -631,7 +638,6 @@ const loadRestaurants: Loader = async (guests, tripCode) => {
           ["Notes", text(f["Notes"])],
         ),
       },
-      _tripRecordId: tripId,
     });
   }
   return out;
@@ -673,9 +679,11 @@ const loadActivities: Loader = async (guests, tripCode) => {
   for (const row of rows) {
     const f = row.fields;
     if (isCancelled(f["Status"])) continue;
-    const tripId = linkedIds(f["Trip ID"])[0];
+    // A booking may link SEVERAL trips (shared car, shared dinner). tripFilter
+    // already scoped the fetch to this trip; this only rejects an unlinked row.
+    const hasTrip = linkedIds(f["Trip ID"]).length > 0;
     const startAt = combineDateTime(f["Activity Date"], f["Activity Time"]);
-    if (!tripId || !startAt) continue;
+    if (!hasTrip || !startAt) continue;
     out.push({
       id: `activity-${row.id}`,
       category: "activity",
@@ -700,7 +708,6 @@ const loadActivities: Loader = async (guests, tripCode) => {
           ["Notes", text(f["Notes"])],
         ),
       },
-      _tripRecordId: tripId,
     });
   }
   return out;
@@ -737,9 +744,11 @@ const loadGreeters: Loader = async (guests, tripCode) => {
   for (const row of rows) {
     const f = row.fields;
     if (isCancelled(f["Status"])) continue;
-    const tripId = linkedIds(f["Trip ID"])[0];
+    // A booking may link SEVERAL trips (shared car, shared dinner). tripFilter
+    // already scoped the fetch to this trip; this only rejects an unlinked row.
+    const hasTrip = linkedIds(f["Trip ID"]).length > 0;
     const startAt = combineDateTime(f["Service Date"], f["Service Time"]);
-    if (!tripId || !startAt) continue;
+    if (!hasTrip || !startAt) continue;
     const svc = text(f["Service Type"]);
     out.push({
       id: `greeter-${row.id}`,
@@ -765,7 +774,6 @@ const loadGreeters: Loader = async (guests, tripCode) => {
           ["Notes", text(f["Notes"])],
         ),
       },
-      _tripRecordId: tripId,
     });
   }
   return out;
@@ -779,9 +787,11 @@ const loadCruises: Loader = async (guests, tripCode) => {
   for (const row of rows) {
     const f = row.fields;
     if (isCancelled(f["Status"])) continue;
-    const tripId = linkedIds(f["Trip ID"])[0];
+    // A booking may link SEVERAL trips (shared car, shared dinner). tripFilter
+    // already scoped the fetch to this trip; this only rejects an unlinked row.
+    const hasTrip = linkedIds(f["Trip ID"]).length > 0;
     const startAt = combineDateTime(f["Sailing Date"], f["Embarkation Start Time"]);
-    if (!tripId || !startAt) continue;
+    if (!hasTrip || !startAt) continue;
     const cur = text(f["Currency"]) ?? "USD";
     out.push({
       id: `cruise-${row.id}`,
@@ -817,7 +827,6 @@ const loadCruises: Loader = async (guests, tripCode) => {
           ["Notes", text(f["Notes"])],
         ),
       },
-      _tripRecordId: tripId,
     });
   }
   return out;
@@ -831,9 +840,11 @@ const loadPrivateFlights: Loader = async (guests, tripCode) => {
   for (const row of rows) {
     const f = row.fields;
     if (isCancelled(f["Status"])) continue;
-    const tripId = linkedIds(f["Trip ID"])[0];
+    // A booking may link SEVERAL trips (shared car, shared dinner). tripFilter
+    // already scoped the fetch to this trip; this only rejects an unlinked row.
+    const hasTrip = linkedIds(f["Trip ID"]).length > 0;
     const startAt = combineDateTime(f["Flight Departure Date"], f["Flight Departure Time"]);
-    if (!tripId || !startAt) continue;
+    if (!hasTrip || !startAt) continue;
     const dep = text(f["Departure Airport"]);
     const arr = text(f["Arrival Airport"]);
     out.push({
@@ -861,7 +872,6 @@ const loadPrivateFlights: Loader = async (guests, tripCode) => {
           ["Notes", text(f["Notes"])],
         ),
       },
-      _tripRecordId: tripId,
     });
   }
   return out;
@@ -875,9 +885,11 @@ const loadRentalCars: Loader = async (guests, tripCode) => {
   for (const row of rows) {
     const f = row.fields;
     if (isCancelled(f["Status"])) continue;
-    const tripId = linkedIds(f["Trip ID"])[0];
+    // A booking may link SEVERAL trips (shared car, shared dinner). tripFilter
+    // already scoped the fetch to this trip; this only rejects an unlinked row.
+    const hasTrip = linkedIds(f["Trip ID"]).length > 0;
     const startAt = combineDateTime(f["Pick Up Date"], f["Pick Up Time"]);
-    if (!tripId || !startAt) continue;
+    if (!hasTrip || !startAt) continue;
     out.push({
       id: `rental_car-${row.id}`,
       category: "rental_car",
@@ -902,7 +914,6 @@ const loadRentalCars: Loader = async (guests, tripCode) => {
           ["Drop-off notes", text(f["Dropoff Instructions"])],
         ),
       },
-      _tripRecordId: tripId,
     });
   }
   return out;
@@ -916,9 +927,11 @@ const loadHelicopters: Loader = async (guests, tripCode) => {
   for (const row of rows) {
     const f = row.fields;
     if (isCancelled(f["Status"])) continue;
-    const tripId = linkedIds(f["Trip ID"])[0];
+    // A booking may link SEVERAL trips (shared car, shared dinner). tripFilter
+    // already scoped the fetch to this trip; this only rejects an unlinked row.
+    const hasTrip = linkedIds(f["Trip ID"]).length > 0;
     const startAt = combineDateTime(f["Flight Departure Date"], f["Flight Departure Time"]);
-    if (!tripId || !startAt) continue;
+    if (!hasTrip || !startAt) continue;
     const orig = text(f["Origin Helipad"]) ?? text(f["Departure City"]);
     const dest = text(f["Destination Helipad"]) ?? text(f["Arrival City"]);
     out.push({
@@ -942,7 +955,6 @@ const loadHelicopters: Loader = async (guests, tripCode) => {
           ["Notes", text(f["Notes"])],
         ),
       },
-      _tripRecordId: tripId,
     });
   }
   return out;
@@ -956,9 +968,11 @@ const loadVipTerminals: Loader = async (guests, tripCode) => {
   for (const row of rows) {
     const f = row.fields;
     if (isCancelled(f["Status"])) continue;
-    const tripId = linkedIds(f["Trip ID"])[0];
+    // A booking may link SEVERAL trips (shared car, shared dinner). tripFilter
+    // already scoped the fetch to this trip; this only rejects an unlinked row.
+    const hasTrip = linkedIds(f["Trip ID"]).length > 0;
     const startAt = combineDateTime(f["Service Date"], f["Service Time"]);
-    if (!tripId || !startAt) continue;
+    if (!hasTrip || !startAt) continue;
     out.push({
       id: `vip_terminal-${row.id}`,
       category: "vip_terminal",
@@ -981,7 +995,6 @@ const loadVipTerminals: Loader = async (guests, tripCode) => {
           ["Notes", text(f["Notes"])],
         ),
       },
-      _tripRecordId: tripId,
     });
   }
   return out;
@@ -995,9 +1008,11 @@ const loadVipEvents: Loader = async (guests, tripCode) => {
   for (const row of rows) {
     const f = row.fields;
     if (isCancelled(f["Status"])) continue;
-    const tripId = linkedIds(f["Trip ID"])[0];
+    // A booking may link SEVERAL trips (shared car, shared dinner). tripFilter
+    // already scoped the fetch to this trip; this only rejects an unlinked row.
+    const hasTrip = linkedIds(f["Trip ID"]).length > 0;
     const startAt = combineDateTime(f["Event Start Date"], f["Event Start Time"]);
-    if (!tripId || !startAt) continue;
+    if (!hasTrip || !startAt) continue;
     out.push({
       id: `vip_event-${row.id}`,
       category: "vip_event",
@@ -1021,7 +1036,6 @@ const loadVipEvents: Loader = async (guests, tripCode) => {
           ["Notes", text(f["Notes"])],
         ),
       },
-      _tripRecordId: tripId,
     });
   }
   return out;
@@ -1035,9 +1049,11 @@ const loadTrains: Loader = async (guests, tripCode) => {
   for (const row of rows) {
     const f = row.fields;
     if (isCancelled(f["Status"])) continue;
-    const tripId = linkedIds(f["Trip ID"])[0];
+    // A booking may link SEVERAL trips (shared car, shared dinner). tripFilter
+    // already scoped the fetch to this trip; this only rejects an unlinked row.
+    const hasTrip = linkedIds(f["Trip ID"]).length > 0;
     const startAt = combineDateTime(f["Departure Date"], f["Departure Time"]);
-    if (!tripId || !startAt) continue;
+    if (!hasTrip || !startAt) continue;
     const orig = text(f["Origin Station"]) ?? text(f["Origin City"]);
     const dest = text(f["Destination Station"]) ?? text(f["Destination City"]);
     out.push({
@@ -1062,7 +1078,6 @@ const loadTrains: Loader = async (guests, tripCode) => {
           ["Notes", text(f["Notes"])],
         ),
       },
-      _tripRecordId: tripId,
     });
   }
   return out;
@@ -1076,9 +1091,11 @@ const loadLuxuryTrains: Loader = async (guests, tripCode) => {
   for (const row of rows) {
     const f = row.fields;
     if (isCancelled(f["Status"])) continue;
-    const tripId = linkedIds(f["Trip ID"])[0];
+    // A booking may link SEVERAL trips (shared car, shared dinner). tripFilter
+    // already scoped the fetch to this trip; this only rejects an unlinked row.
+    const hasTrip = linkedIds(f["Trip ID"]).length > 0;
     const startAt = combineDateTime(f["Boarding Date"], f["Boarding Time"]);
-    if (!tripId || !startAt) continue;
+    if (!hasTrip || !startAt) continue;
     const cur = text(f["Currency"]) ?? "USD";
     out.push({
       id: `luxury_train-${row.id}`,
@@ -1107,7 +1124,6 @@ const loadLuxuryTrains: Loader = async (guests, tripCode) => {
           ["Notes", text(f["Notes"])],
         ),
       },
-      _tripRecordId: tripId,
     });
   }
   return out;
@@ -1121,9 +1137,11 @@ const loadYachtCharters: Loader = async (guests, tripCode) => {
   for (const row of rows) {
     const f = row.fields;
     if (isCancelled(f["Status"])) continue;
-    const tripId = linkedIds(f["Trip ID"])[0];
+    // A booking may link SEVERAL trips (shared car, shared dinner). tripFilter
+    // already scoped the fetch to this trip; this only rejects an unlinked row.
+    const hasTrip = linkedIds(f["Trip ID"]).length > 0;
     const startAt = combineDateTime(f["Embark Date"], f["Embark Time"]);
-    if (!tripId || !startAt) continue;
+    if (!hasTrip || !startAt) continue;
     out.push({
       id: `yacht_charter-${row.id}`,
       category: "yacht_charter",
@@ -1148,7 +1166,6 @@ const loadYachtCharters: Loader = async (guests, tripCode) => {
           ["Notes", text(f["Notes"])],
         ),
       },
-      _tripRecordId: tripId,
     });
   }
   return out;
@@ -1162,9 +1179,11 @@ const loadShortYachts: Loader = async (guests, tripCode) => {
   for (const row of rows) {
     const f = row.fields;
     if (isCancelled(f["Status"])) continue;
-    const tripId = linkedIds(f["Trip ID"])[0];
+    // A booking may link SEVERAL trips (shared car, shared dinner). tripFilter
+    // already scoped the fetch to this trip; this only rejects an unlinked row.
+    const hasTrip = linkedIds(f["Trip ID"]).length > 0;
     const startAt = combineDateTime(f["Charter Start Date"], f["Charter Start Time"]);
-    if (!tripId || !startAt) continue;
+    if (!hasTrip || !startAt) continue;
     out.push({
       id: `yacht_short-${row.id}`,
       category: "yacht_short",
@@ -1188,7 +1207,6 @@ const loadShortYachts: Loader = async (guests, tripCode) => {
           ["Notes", text(f["Notes"])],
         ),
       },
-      _tripRecordId: tripId,
     });
   }
   return out;
@@ -1284,7 +1302,7 @@ function buildItinerary(
 
   const days: ItineraryDay[] = dayList.map((date) => ({
     date,
-    reservations: (byDay.get(date) ?? []).map(({ _tripRecordId, ...r }) => r as Reservation),
+    reservations: byDay.get(date) ?? [],
   }));
 
   const totalsMap = new Map<string, number>();
