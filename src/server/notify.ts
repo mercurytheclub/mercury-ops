@@ -1,18 +1,48 @@
 import "server-only";
 
-// Team WhatsApp notifications via Whapi — mirrors the n8n booking forms so the
-// same groups get the same "New / Updated booking" messages when ops saves a
-// booking. Each booking type posts to its own group with its own format.
+// Team WhatsApp notifications — mirrors the n8n booking forms so the same groups
+// get the same "New / Updated booking" messages when ops saves a booking. Each
+// booking type posts to its own group with its own format.
 //
-// Fire-and-forget: a Whapi failure must NEVER break a save (matches the n8n
-// `continueOnFail`). The token is an env secret; group ids are public-ish
-// identifiers kept here so the routing is visible.
+// SENDS THROUGH THE MERCURY OPS RELAY, NOT whapi directly.
+//
+// Until 2026-08-01 this posted straight to gate.whapi.cloud, which made it the
+// last sender in the estate invisible to the ⚙️ Ops Outbox — every one of the 64
+// n8n workflows had been migrated and this one was missed, because it is the only
+// sender that is not an n8n node. Going through the relay means:
+//
+//   • every notification is written to Airtable BEFORE it is sent, so a WhatsApp
+//     outage leaves a durable record of what ops saved but the team never saw;
+//   • the whapi token is no longer needed here at all — it lives only on the
+//     relay, so this app cannot leak it and cannot reach the /groups endpoint
+//     that got the number banned on 2026-07-29;
+//   • the relay returns a REAL delivery verdict, so a failure can be logged
+//     instead of silently discarded as it was before.
+//
+// Fire-and-forget semantics are unchanged: a send failure must NEVER break a
+// save (matches the n8n `continueOnFail`). Group ids stay here so the routing is
+// visible, and the message bodies are untouched.
 
 import type { BookingType } from "@/lib/bookingFields";
 import type { BookingValues } from "./bookings";
 
-const WHAPI_URL = "https://gate.whapi.cloud/messages/text";
-const WHAPI_TOKEN = process.env.WHAPI_TOKEN;
+const RELAY_URL = "https://mercury-server.fly.dev/internal/ops/messages/text";
+/** Transport guard on every /internal route. */
+const MERCURY_APP_KEY = process.env.MERCURY_APP_KEY;
+/** The relay route's own shared secret. */
+const OPS_RELAY_SECRET = process.env.OPS_RELAY_SECRET;
+
+/**
+ * Bounded, because `notifyTeam` is awaited inside the save action — an
+ * unbounded fetch (what this used to do) leaves an ops user watching a spinner
+ * for as long as the upstream hangs.
+ *
+ * Cutting the relay off client-side is safe in a way it was not before: the
+ * relay writes the outbox row BEFORE attempting the send, so an aborted request
+ * still leaves a durable record and the send still completes server-side. The
+ * worst case is a row we did not read the verdict for, not a lost notification.
+ */
+const SEND_TIMEOUT_MS = 10_000;
 
 const GROUP: Record<BookingType, string> = {
   restaurant: "120363427918542961@g.us",
@@ -129,7 +159,8 @@ export function bookingMessage(type: BookingType, isEdit: boolean, values: Booki
   return buildMessage(type, isEdit, values, ctx);
 }
 
-/** Notify the type's team WhatsApp group. No-ops if WHAPI_TOKEN is unset. */
+/** Notify the type's team WhatsApp group through the Ops Relay. No-ops when the
+ *  relay credentials are unset. */
 export async function notifyTeam(input: {
   type: BookingType;
   isEdit: boolean;
@@ -141,19 +172,44 @@ export async function notifyTeam(input: {
     tripName: input.tripName,
     submittedBy: input.submittedBy,
   });
-  if (!WHAPI_TOKEN) {
+  if (!MERCURY_APP_KEY || !OPS_RELAY_SECRET) {
     // Not configured (e.g. local dev) — don't send, but log the would-be
     // message so the format can be verified without pinging the team groups.
-    console.log(`[notify] WHAPI_TOKEN unset — would send to ${GROUP[input.type]}:\n${body}`);
+    // BOTH are required: the relay is behind the transport guard AND its own
+    // shared secret, so half a config is not a working config.
+    console.log(
+      `[notify] relay credentials unset (need MERCURY_APP_KEY + OPS_RELAY_SECRET) — ` +
+        `would send to ${GROUP[input.type]}:\n${body}`,
+    );
     return;
   }
   try {
-    await fetch(WHAPI_URL, {
+    const res = await fetch(RELAY_URL, {
       method: "POST",
-      headers: { Authorization: `Bearer ${WHAPI_TOKEN}`, "content-type": "application/json" },
+      headers: {
+        "x-mercury-key": MERCURY_APP_KEY,
+        "x-internal-secret": OPS_RELAY_SECRET,
+        // Becomes the outbox row's Source, so "which sender stopped working"
+        // is answerable from the table during an outage.
+        "x-ops-source": "mercury-ops (booking saved)",
+        "content-type": "application/json",
+      },
+      // The wire body is whapi's own shape and is forwarded verbatim, so the
+      // message the team receives is byte-for-byte what it was before.
       body: JSON.stringify({ to: GROUP[input.type], body }),
+      signal: AbortSignal.timeout(SEND_TIMEOUT_MS),
     });
+    if (!res.ok) {
+      // The relay answers with the truth about delivery rather than a blanket
+      // 200, so this is worth surfacing — the old code discarded it entirely.
+      // The booking is already saved; this only means the group was not told.
+      console.warn(
+        `[notify] relay reported NOT delivered (${res.status}) for ${input.type} — ` +
+          `the booking is saved but the group was not notified. ` +
+          `The full message is in the ⚙️ Ops Outbox table.`,
+      );
+    }
   } catch (err) {
-    console.warn("whapi notify failed (non-fatal):", err);
+    console.warn("[notify] relay send failed (non-fatal):", err);
   }
 }

@@ -27,7 +27,9 @@ export async function saveBookingAction(input: {
     // Stamp the signed-in team member (falls back to "Mercury Ops" pre-auth).
     const session = await auth();
     const submittedBy = session?.user?.name || session?.user?.email || undefined;
-    // WhatsApp the team group for this booking type (no-ops without WHAPI_TOKEN).
+    // WhatsApp the team group for this booking type, via the Ops Relay so the
+    // notification is recorded in ⚙️ Ops Outbox before it is sent. No-ops
+    // without MERCURY_APP_KEY + OPS_RELAY_SECRET; never throws.
     await notifyTeam({
       type: input.type,
       isEdit: !!input.recordId,
