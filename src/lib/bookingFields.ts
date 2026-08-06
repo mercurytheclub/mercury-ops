@@ -66,7 +66,8 @@ export const BOOKING_CONFIG: Record<BookingType, BookingTypeConfig> = {
       { name: "Distance", label: "Distance", kind: "text", half: true, placeholder: "e.g. 10 min from hotel" },
       { name: "Status Detail", label: "Booking status", kind: "select", half: true, options: ["Confirmed", "On Request"] },
       { name: "Status", label: "Active / cancelled", kind: "select", half: true, options: STATUS_ACTIVE_CANCELLED },
-      { name: "Notes", label: "Notes", kind: "textarea", placeholder: "Anything the team should know…" },
+      { name: "Notes", label: "Internal notes", kind: "textarea", placeholder: "Team only — the guest never sees this…" },
+      { name: "Guest Notes", label: "Guest notes", kind: "textarea", placeholder: "Shown to the guest on this booking's card…" },
     ],
   },
 
@@ -91,7 +92,8 @@ export const BOOKING_CONFIG: Record<BookingType, BookingTypeConfig> = {
       { name: "Guest Last Name", label: "Guest last name", kind: "text", half: true },
       { name: "Status", label: "Active / cancelled", kind: "select", half: true, options: STATUS_ACTIVE_CANCELLED },
       { name: "Description", label: "Description", kind: "textarea", placeholder: "What the activity includes…" },
-      { name: "Notes", label: "Notes", kind: "textarea", placeholder: "Internal notes…" },
+      { name: "Notes", label: "Internal notes", kind: "textarea", placeholder: "Team only — the guest never sees this…" },
+      { name: "Guest Notes", label: "Guest notes", kind: "textarea", placeholder: "Shown to the guest on this booking's card…" },
     ],
   },
 
@@ -149,7 +151,8 @@ export const BOOKING_CONFIG: Record<BookingType, BookingTypeConfig> = {
       { name: "Guest First Name", label: "Guest first name", kind: "text", half: true },
       { name: "Guest Last Name", label: "Guest last name", kind: "text", half: true },
       { name: "Status", label: "Active / cancelled", kind: "select", half: true, options: STATUS_ACTIVE_CANCELLED },
-      { name: "Notes", label: "Notes", kind: "textarea", placeholder: "Internal notes…" },
+      { name: "Notes", label: "Internal notes", kind: "textarea", placeholder: "Team only — the guest never sees this…" },
+      { name: "Guest Notes", label: "Guest notes", kind: "textarea", placeholder: "Shown to the guest on this booking's card…" },
     ],
   },
 };
