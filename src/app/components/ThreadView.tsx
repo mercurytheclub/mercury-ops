@@ -22,17 +22,33 @@ const SOFT_LIMIT = 480;
 
 function statusTone(status: string | null): string {
   switch (status) {
-    case "Sent":
+    case "Delivered":
       return "cx-pill-good";
     case "Failed":
     case "Draft Failed":
       return "cx-pill-bad";
+    case "Sent":
     case "Queued":
     case "Drafting":
       return "cx-pill-wait";
     default:
       return "";
   }
+}
+
+/**
+ * Which statuses are worth a pill on a bubble.
+ *
+ * `Delivered` and `Received` are the expected outcomes and stay silent — a pill
+ * on every message is noise nobody reads. Everything else is a state a concierge
+ * should notice, and that now includes **Sent**: since the delivery callback
+ * landed, `Sent` means Twilio accepted it and has not yet confirmed it reached a
+ * handset. Showing it as a quiet in-flight pill is the honest reading, and it is
+ * what stops a failed text looking answered — which is exactly what happened to
+ * two replies that sat at `Sent` for eight days after the carrier rejected them.
+ */
+function showsPill(status: string | null): boolean {
+  return Boolean(status) && status !== "Delivered" && status !== "Received";
 }
 
 export function ThreadView({
@@ -301,10 +317,13 @@ function Bubble({ message }: { message: ConciergeMessage }) {
     <div className={`cx-bubble-row${mine ? " cx-bubble-mine" : ""}`}>
       <div className="cx-bubble">
         <p className="cx-bubble-body">{message.body || <em>empty message</em>}</p>
+        {message.status === "Failed" && message.error && (
+          <p className="cx-bubble-error">{message.error}</p>
+        )}
         <span className="cx-bubble-meta">
           {clockOf(message.sentAt ?? message.createdTime)}
           {message.channel && message.channel !== "SMS" ? ` · ${message.channel}` : ""}
-          {message.status && message.status !== "Sent" && message.status !== "Received" ? (
+          {showsPill(message.status) ? (
             <span className={`cx-pill ${statusTone(message.status)}`}>{message.status}</span>
           ) : null}
         </span>
