@@ -846,6 +846,18 @@ select.bk-input option { background: #0c0c0c; color: var(--mercury-white); }
 }
 .cx-bubble-mine .cx-bubble { border-color: rgba(82, 165, 211, 0.45); background: rgba(82, 165, 211, 0.05); }
 .cx-bubble-body { margin: 0; font-size: 0.95rem; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
+/* Why a text did not arrive, on the bubble that did not arrive. Twilio reports
+   this seconds after the send, so without it the bubble looks like every other
+   one that worked. */
+.cx-bubble-error {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--mercury-red);
+  border-left: 2px solid var(--mercury-red);
+  padding-left: 0.6rem;
+}
+
 .cx-bubble-meta {
   display: flex;
   align-items: center;
@@ -854,7 +866,19 @@ select.bk-input option { background: #0c0c0c; color: var(--mercury-white); }
   font-size: 0.66rem;
   opacity: 0.4;
 }
-.cx-bubble-mine .cx-bubble-meta { justify-content: flex-end; }
+.cx-bubble-mine /* Why a text did not arrive, on the bubble that did not arrive. Twilio reports
+   this seconds after the send, so without it the bubble looks like every other
+   one that worked. */
+.cx-bubble-error {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--mercury-red);
+  border-left: 2px solid var(--mercury-red);
+  padding-left: 0.6rem;
+}
+
+.cx-bubble-meta { justify-content: flex-end; }
 
 .cx-pill {
   font-family: var(--font-mono), monospace;

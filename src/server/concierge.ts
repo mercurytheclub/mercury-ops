@@ -174,12 +174,19 @@ function toThread(row: Row, guests: Map<string, string>): ConciergeThread {
   const f = row.fields;
   const guestId = linkedIds(f[T.guest])[0] ?? null;
   const dir = str(f, T.lastDirection);
+  const phone = str(f, T.phone);
+  // A guest row can carry a Full Name that is only whitespace — one in the live
+  // base is a single space — and `?? ` would happily hand that to the heading,
+  // which then renders as nothing at all. Trim to null, and fall back to the
+  // number: a phone is always something a concierge can act on, "untitled
+  // thread" never is.
+  const named = guestId ? (guests.get(guestId) ?? "").trim() : "";
   return {
     id: row.id,
-    title: str(f, T.thread) ?? "untitled thread",
+    title: str(f, T.thread) ?? phone ?? "unknown number",
     guestId,
-    guestName: (guestId && guests.get(guestId)) || null,
-    phone: str(f, T.phone),
+    guestName: named || null,
+    phone,
     status: str(f, T.status),
     lastMessageAt: str(f, T.lastMessageAt),
     lastDirection: dir === "Inbound" || dir === "Outbound" ? dir : null,
