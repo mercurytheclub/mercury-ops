@@ -1,7 +1,7 @@
 import { loadTrips } from "@/server/airtable";
 import { Wordmark } from "./components/Wordmark";
 import { TripsList } from "./components/TripsList";
-import { color } from "@brand";
+import { OpsNav } from "./components/OpsNav";
 
 // Server component: reads Airtable directly through the server-only loader.
 // No client-side fetch, no token in the browser. The list + search UI is a
@@ -18,10 +18,7 @@ export default async function Home() {
         <Wordmark size={30} />
       </header>
 
-      <nav style={{ display: "flex", justifyContent: "center", gap: "1.75rem", marginTop: "-1.25rem" }}>
-        <span className="label" style={{ color: color.blue }}>trips</span>
-        <a href="/today" className="label" style={{ opacity: 0.5 }}>today</a>
-      </nav>
+      <OpsNav current="trips" />
 
       {trips.length === 0 ? (
         <p style={{ opacity: 0.6 }}>

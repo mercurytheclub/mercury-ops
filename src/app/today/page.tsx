@@ -1,5 +1,6 @@
 import { loadAgenda } from "@/server/agenda";
 import { Wordmark } from "@/app/components/Wordmark";
+import { OpsNav } from "@/app/components/OpsNav";
 import { color } from "@brand";
 
 // Cross-trip data, recomputed often — keep it fresh.
@@ -54,11 +55,7 @@ export default async function TodayPage({
         <Wordmark size={30} />
       </header>
 
-      {/* Trips ↔ Today tabs */}
-      <nav style={{ display: "flex", justifyContent: "center", gap: "1.75rem" }}>
-        <a href="/" className="label" style={{ opacity: 0.5 }}>trips</a>
-        <span className="label" style={{ color: color.blue }}>today</span>
-      </nav>
+      <OpsNav current="today" />
 
       <div style={{ display: "flex", flexDirection: "column", gap: "0.9rem" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem" }}>
