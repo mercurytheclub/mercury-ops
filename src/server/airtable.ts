@@ -89,10 +89,14 @@ async function fetchAirtablePage<T>(
   tableId: string,
   offset?: string,
   filterByFormula?: string,
+  extraParams?: Record<string, string>,
 ): Promise<AirtablePage<T>> {
   const params = new URLSearchParams({ pageSize: "100" });
   if (offset) params.set("offset", offset);
   if (filterByFormula) params.set("filterByFormula", filterByFormula);
+  // Callers that key off field IDs rather than names pass
+  // `returnFieldsByFieldId=true` here (see server/concierge.ts).
+  for (const [k, v] of Object.entries(extraParams ?? {})) params.set(k, v);
   const url = `https://api.airtable.com/v0/${BASE_ID}/${tableId}?${params.toString()}`;
   // NOT cached: Airtable's pagination offset tokens are short-lived, so caching a
   // page response would hand back a stale offset and break the next-page fetch
@@ -119,11 +123,12 @@ export const MASTER_REVALIDATE_S = 3600;
 export async function fetchAllPages<T>(
   tableId: string,
   filterByFormula?: string,
+  extraParams?: Record<string, string>,
 ): Promise<T[]> {
   const all: T[] = [];
   let offset: string | undefined;
   do {
-    const page = await fetchAirtablePage<T>(tableId, offset, filterByFormula);
+    const page = await fetchAirtablePage<T>(tableId, offset, filterByFormula, extraParams);
     all.push(...page.records);
     offset = page.offset;
   } while (offset);

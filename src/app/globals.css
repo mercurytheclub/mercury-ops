@@ -670,3 +670,295 @@ select.bk-input option { background: #0c0c0c; color: var(--mercury-white); }
   from { transform: scaleX(1); }
   to { transform: scaleX(0); }
 }
+
+/* ─── Concierge inbox (cx-) ────────────────────────────────────────────────
+   The guest SMS line. House rules apply: stage black dominates, cyan is the one
+   accent, red is reserved for something a concierge must not miss (an opted-out
+   guest, a failed send, a blank Claude could not fill). Hairlines, not borders.
+   Bubbles are hairline-drawn rather than filled, so a transcript reads as
+   Mercury rather than as a chat app.                                        */
+
+.cx-list-wrap { display: flex; flex-direction: column; gap: 1.5rem; width: 100%; max-width: 60rem; margin: 0 auto; }
+.cx-list-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+
+.cx-search {
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--mercury-rule);
+  color: var(--mercury-white);
+  font-family: var(--font-body), system-ui, sans-serif;
+  font-size: 0.9rem;
+  padding: 0.4rem 0.1rem;
+  min-width: 14rem;
+}
+.cx-search::placeholder { color: rgba(255, 255, 255, 0.25); }
+.cx-search:focus { outline: none; border-bottom-color: var(--mercury-blue); }
+
+
+.cx-group { display: flex; flex-direction: column; }
+.cx-group-head { padding: 0 0 0.6rem; opacity: 0.6; }
+
+.cx-row {
+  display: grid;
+  grid-template-columns: 2.4rem 1fr auto;
+  gap: 0 1rem;
+  align-items: center;
+  padding: 0.95rem 0.4rem;
+  border-top: 1px solid var(--mercury-rule);
+  color: var(--mercury-white);
+  transition: background 0.15s;
+}
+.cx-group .cx-row:last-child { border-bottom: 1px solid var(--mercury-rule); }
+.cx-row:hover { background: rgba(255, 255, 255, 0.025); }
+.cx-row-urgent { border-left: 2px solid var(--mercury-blue); padding-left: 0.7rem; }
+
+.cx-avatar {
+  display: grid;
+  place-items: center;
+  width: 2.4rem;
+  height: 2.4rem;
+  border-radius: 999px;
+  box-shadow: 0 0 0 1px var(--mercury-rule-2);
+  font-family: var(--font-mono), monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  opacity: 0.75;
+}
+.cx-row-body { display: flex; flex-direction: column; gap: 0.2rem; min-width: 0; }
+.cx-row-top { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.cx-name { font-size: 1rem; }
+.cx-preview {
+  font-size: 0.85rem;
+  opacity: 0.55;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cx-preview-us { font-family: var(--font-mono), monospace; font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.6; margin-right: 0.45rem; }
+
+.cx-row-right { display: flex; flex-direction: column; align-items: flex-end; gap: 0.2rem; text-align: right; }
+.cx-waited { font-family: var(--font-mono), monospace; font-size: 0.72rem; opacity: 0.6; white-space: nowrap; }
+.cx-waited-late { color: var(--mercury-red); opacity: 0.9; }
+.cx-status { font-size: 0.68rem; opacity: 0.35; white-space: nowrap; }
+
+.cx-tag {
+  font-family: var(--font-mono), monospace;
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 0.12rem 0.4rem;
+  border: 1px solid var(--mercury-rule-2);
+  opacity: 0.7;
+  white-space: nowrap;
+}
+.cx-tag-stop { border-color: var(--mercury-red); color: var(--mercury-red); opacity: 1; }
+.cx-tag-claim { border-color: var(--mercury-blue); color: var(--mercury-blue); opacity: 1; text-transform: none; letter-spacing: 0.02em; }
+
+/* ─── Thread page ─────────────────────────────────────────────────────── */
+
+.cx-page { min-height: 100vh; padding: 4vh 4vw 6vh; display: flex; flex-direction: column; gap: 1.75rem; }
+.cx-page-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.cx-back { opacity: 0.5; color: var(--mercury-white); }
+.cx-back:hover { opacity: 1; color: var(--mercury-blue); }
+
+.cx-thread {
+  display: grid;
+  grid-template-columns: minmax(0, 20rem) minmax(0, 1fr);
+  gap: 0 2.5rem;
+  align-items: start;
+  width: 100%;
+  max-width: 78rem;
+  margin: 0 auto;
+}
+
+.cx-aside { display: flex; flex-direction: column; gap: 1.4rem; position: sticky; top: 4vh; }
+.cx-guest { display: flex; flex-direction: column; gap: 0.4rem; }
+.cx-guest-name { font-size: 1.5rem; font-weight: 400; margin: 0; line-height: 1.2; }
+.cx-guest-phone { font-family: var(--font-mono), monospace; font-size: 0.85rem; opacity: 0.6; color: var(--mercury-white); }
+.cx-guest-phone:hover { color: var(--mercury-blue); opacity: 1; }
+.cx-guest-tags { display: flex; gap: 0.4rem; flex-wrap: wrap; padding-top: 0.2rem; }
+
+.cx-warn {
+  margin: 0;
+  padding: 0.7rem 0.85rem;
+  border-left: 2px solid var(--mercury-red);
+  background: rgba(233, 80, 81, 0.06);
+  font-size: 0.86rem;
+  line-height: 1.5;
+}
+
+.cx-claim { display: flex; align-items: center; gap: 0.7rem; flex-wrap: wrap; padding-bottom: 0.2rem; }
+.cx-claim-who { color: var(--mercury-blue); text-transform: none; letter-spacing: 0.02em; }
+
+.cx-context { display: flex; flex-direction: column; gap: 0.5rem; border-top: 1px solid var(--mercury-rule); padding-top: 1.1rem; }
+.cx-context-head { opacity: 0.45; }
+.cx-context-trip { font-size: 1rem; color: var(--mercury-white); }
+.cx-context-trip:hover { color: var(--mercury-blue); }
+.cx-context-dates { font-family: var(--font-mono), monospace; font-size: 0.74rem; opacity: 0.5; }
+.cx-context-empty { font-size: 0.85rem; opacity: 0.45; line-height: 1.55; margin: 0; }
+.cx-context-link { display: inline-block; margin-top: 0.4rem; color: var(--mercury-blue); opacity: 0.8; }
+.cx-context-link:hover { opacity: 1; }
+
+.cx-day { display: flex; flex-direction: column; gap: 0.5rem; padding-top: 0.7rem; }
+.cx-day-date { font-family: var(--font-mono), monospace; font-size: 0.68rem; opacity: 0.4; }
+.cx-res { display: grid; grid-template-columns: 4.2rem 1fr; gap: 0 0.6rem; align-items: start; }
+.cx-res-time { font-family: var(--font-mono), monospace; font-size: 0.72rem; opacity: 0.55; padding-top: 0.15rem; }
+.cx-res-body { display: flex; flex-direction: column; gap: 0.12rem; min-width: 0; }
+.cx-res-cat { font-size: 0.58rem; opacity: 0.4; }
+.cx-res-title { font-size: 0.88rem; }
+.cx-res-meta { font-size: 0.76rem; opacity: 0.45; }
+
+/* ─── Transcript ──────────────────────────────────────────────────────── */
+
+.cx-convo { display: flex; flex-direction: column; gap: 1.5rem; min-width: 0; }
+
+/* The transcript scrolls, the composer does not. A concierge must never have to
+   scroll the page to find the reply box, and on a thread that has run for weeks
+   they would. Min-height keeps a one-message thread from collapsing into a
+   sliver with a void beneath it. */
+.cx-transcript {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  min-height: 22rem;
+  max-height: 56vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 0.5rem;
+}
+.cx-transcript::-webkit-scrollbar { width: 6px; }
+.cx-transcript::-webkit-scrollbar-thumb { background: var(--mercury-rule-2); border-radius: 3px; }
+
+.cx-daybreak { display: flex; align-items: center; gap: 0.8rem; padding: 0.8rem 0 0.3rem; }
+.cx-daybreak span { font-family: var(--font-mono), monospace; font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.14em; opacity: 0.35; }
+.cx-daybreak::after { content: ""; flex: 1; height: 1px; background: var(--mercury-rule); }
+
+.cx-bubble-row { display: flex; justify-content: flex-start; }
+.cx-bubble-mine { justify-content: flex-end; }
+.cx-bubble {
+  max-width: min(42rem, 82%);
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid var(--mercury-rule);
+  border-radius: 3px;
+}
+.cx-bubble-mine .cx-bubble { border-color: rgba(82, 165, 211, 0.45); background: rgba(82, 165, 211, 0.05); }
+.cx-bubble-body { margin: 0; font-size: 0.95rem; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
+.cx-bubble-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-mono), monospace;
+  font-size: 0.66rem;
+  opacity: 0.4;
+}
+.cx-bubble-mine .cx-bubble-meta { justify-content: flex-end; }
+
+.cx-pill {
+  font-family: var(--font-mono), monospace;
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 0.05rem 0.35rem;
+  border: 1px solid var(--mercury-rule-2);
+  opacity: 0.9;
+}
+.cx-pill-good { border-color: var(--mercury-green); color: var(--mercury-green); }
+.cx-pill-bad { border-color: var(--mercury-red); color: var(--mercury-red); }
+.cx-pill-wait { border-color: var(--mercury-blue); color: var(--mercury-blue); }
+
+/* ─── Composer ────────────────────────────────────────────────────────── */
+
+.cx-composer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  border-top: 1px solid var(--mercury-rule);
+  padding-top: 1.3rem;
+}
+
+.cx-waiting-banner { font-family: var(--font-mono), monospace; font-size: 0.72rem; opacity: 0.55; }
+.cx-waiting-late { color: var(--mercury-red); opacity: 0.95; }
+
+.cx-unresolved {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.75rem 0.9rem;
+  border-left: 2px solid var(--mercury-red);
+  background: rgba(233, 80, 81, 0.05);
+}
+.cx-unresolved-head { color: var(--mercury-red); opacity: 0.9; }
+.cx-unresolved ul { margin: 0; padding-left: 1.1rem; display: flex; flex-direction: column; gap: 0.3rem; }
+.cx-unresolved li { font-size: 0.87rem; line-height: 1.5; }
+
+.cx-note { margin: 0; display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.86rem; line-height: 1.55; opacity: 0.75; }
+.cx-note-head { opacity: 0.45; }
+.cx-error { margin: 0; font-size: 0.86rem; line-height: 1.5; color: var(--mercury-red); }
+
+.cx-input {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--mercury-rule-2);
+  border-radius: 3px;
+  color: var(--mercury-white);
+  font-family: var(--font-body), system-ui, sans-serif;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  padding: 0.8rem 0.9rem;
+  resize: vertical;
+}
+.cx-input::placeholder { color: rgba(255, 255, 255, 0.28); }
+.cx-input:focus { outline: none; border-color: var(--mercury-blue); background: rgba(82, 165, 211, 0.05); }
+
+.cx-composer-foot { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.cx-count { font-family: var(--font-mono), monospace; font-size: 0.7rem; opacity: 0.4; }
+.cx-count-over { color: var(--mercury-red); opacity: 0.9; }
+.cx-actions { display: flex; gap: 0.75rem; align-items: center; margin-left: auto; }
+.cx-no-reply { max-width: 46ch; }
+
+.cx-btn-ghost {
+  background: none;
+  border: 0;
+  cursor: pointer;
+  color: var(--mercury-white);
+  font-family: var(--font-mono), monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.7rem;
+  opacity: 0.55;
+  padding: 0.4rem 0.2rem;
+}
+.cx-btn-ghost:hover { opacity: 1; color: var(--mercury-blue); }
+.cx-btn-ghost:disabled { opacity: 0.25; cursor: default; color: var(--mercury-white); }
+
+.cx-btn-send {
+  background: var(--mercury-blue);
+  border: 0;
+  border-radius: 3px;
+  cursor: pointer;
+  color: var(--mercury-black);
+  font-family: var(--font-mono), monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.72rem;
+  padding: 0.62rem 1.1rem;
+}
+.cx-btn-send:hover { opacity: 0.9; }
+.cx-btn-send:disabled { opacity: 0.35; cursor: default; }
+
+.cx-btn-ghost:focus-visible,
+.cx-btn-send:focus-visible,
+.cx-row:focus-visible,
+.cx-search:focus-visible { outline: 2px solid var(--mercury-blue); outline-offset: 2px; }
+
+@media (max-width: 900px) {
+  .cx-thread { grid-template-columns: 1fr; gap: 2rem 0; }
+  .cx-aside { position: static; }
+  .cx-bubble { max-width: 92%; }
+  /* Narrow screens scroll the page, not a pane inside it — a nested scroller on
+     a phone is the thing that traps a thumb. */
+  .cx-transcript { max-height: none; min-height: 0; overflow-y: visible; padding-right: 0; }
+}

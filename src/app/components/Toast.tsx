@@ -3,15 +3,21 @@
 import { useEffect, useState } from "react";
 
 type Tone = "success" | "error";
-type Toast = { id: number; message: string; tone: Tone };
+type Toast = { id: number; message: string; tone: Tone; eyebrow?: string };
 
 const DURATION = 4200; // ms on screen (matches the progress-bar animation)
 let counter = 0;
 
-/** Fire a toast from anywhere on the client (drawer save, etc.). */
-export function showToast(message: string, tone: Tone = "success") {
+/**
+ * Fire a toast from anywhere on the client (drawer save, etc.).
+ *
+ * `eyebrow` overrides the default saved / couldn’t save label for actions that
+ * are not saves — the concierge inbox says "sent" and "didn’t send", because a
+ * text that went to a guest is not a record that got written.
+ */
+export function showToast(message: string, tone: Tone = "success", eyebrow?: string) {
   if (typeof window === "undefined") return;
-  window.dispatchEvent(new CustomEvent("mercury-toast", { detail: { id: ++counter, message, tone } }));
+  window.dispatchEvent(new CustomEvent("mercury-toast", { detail: { id: ++counter, message, tone, eyebrow } }));
 }
 
 function Glyph({ tone }: { tone: Tone }) {
@@ -59,7 +65,7 @@ export function Toaster() {
             <Glyph tone={t.tone} />
           </span>
           <div className="toast-body">
-            <span className="toast-eyebrow label">{t.tone === "error" ? "couldn’t save" : "saved"}</span>
+            <span className="toast-eyebrow label">{t.eyebrow ?? (t.tone === "error" ? "couldn’t save" : "saved")}</span>
             <span className="toast-msg">{t.message}</span>
           </div>
           <span className="toast-bar" style={{ animationDuration: `${DURATION}ms` }} />
