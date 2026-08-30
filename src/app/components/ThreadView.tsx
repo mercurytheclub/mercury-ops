@@ -3,7 +3,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { ConciergeMessage, ThreadDetail } from "@/server/concierge";
-import { claimThreadAction, redraftAction, saveDraftAction, sendReplyAction } from "@/app/concierge-actions";
+import { claimThreadAction, redraftAction, saveDraftAction, sendMessageAction } from "@/app/concierge-actions";
 import { showToast } from "./Toast";
 import { clockOf, dayOf, waitedFor } from "@/lib/waited";
 
@@ -77,7 +77,6 @@ export function ThreadView({
   const [text, setText] = useState(replyTo?.draftReply ?? "");
   const [dirty, setDirty] = useState(false);
   const [pending, startTransition] = useTransition();
-  const [sent, setSent] = useState(false);
   const composerRef = useRef<HTMLTextAreaElement>(null);
   const transcriptRef = useRef<HTMLDivElement>(null);
 
@@ -115,19 +114,20 @@ export function ThreadView({
   const tooLong = text.trim().length > SOFT_LIMIT;
 
   function handleSend() {
-    if (!replyTo) return;
     const body = text.trim();
     if (!body) return;
     startTransition(async () => {
-      const res = await sendReplyAction({ threadId: thread.id, messageId: replyTo.id, text: body });
+      const res = await sendMessageAction({ threadId: thread.id, text: body });
       if (!res.ok) {
         showToast(res.error, "error", "didn’t send");
         return;
       }
+      // Empty the box, not lock the button: the next thing a concierge does is
+      // often say another thing. The old flow disabled send after one message
+      // because a reply was bolted to one inbound row.
+      setText("");
       setDirty(false);
-      setSent(true);
-      if (res.sent) showToast("Text delivered to the guest.", "success", "sent");
-      else showToast(res.note, "success", "queued");
+      showToast("Handed to Twilio. The bubble turns green when it reaches them.", "success", "sent");
       router.refresh();
     });
   }
@@ -228,12 +228,7 @@ export function ThreadView({
             </div>
           )}
 
-          {!replyTo ? (
-            <p className="cx-context-empty cx-no-reply">
-              There is nothing to reply to yet. A reply hangs off a message the guest sent, so
-              starting a text to a guest who has not written first is not possible from here.
-            </p>
-          ) : (
+          {(
             <>
               {unresolved.length > 0 && (
                 <div className="cx-unresolved">
@@ -246,14 +241,14 @@ export function ThreadView({
                 </div>
               )}
 
-              {replyTo.draftNote && (
+              {replyTo?.draftNote && (
                 <p className="cx-note">
                   <span className="label cx-note-head">claude’s note</span>
                   {replyTo.draftNote}
                 </p>
               )}
 
-              {replyTo.error && <p className="cx-error">{replyTo.error}</p>}
+              {replyTo?.error && <p className="cx-error">{replyTo.error}</p>}
 
               <textarea
                 ref={composerRef}
@@ -261,46 +256,46 @@ export function ThreadView({
                 value={text}
                 rows={5}
                 placeholder={
-                  replyTo.status === "Drafting"
+                  replyTo?.status === "Drafting"
                     ? "Claude is still writing a draft. You can write your own instead."
-                    : "Write the reply that goes to the guest."
+                    : thread.awaitingReply
+                      ? "Write the reply that goes to the guest."
+                      : "Write a message to this guest."
                 }
                 onChange={(e) => {
                   setText(e.target.value);
                   setDirty(true);
-                  setSent(false);
                 }}
-                aria-label="Reply to the guest"
+                aria-label="Message to the guest"
               />
 
               <div className="cx-composer-foot">
                 <span className={`cx-count${tooLong ? " cx-count-over" : ""}`}>
                   {text.trim().length} characters
-                  {replyTo.draftModel && !dirty ? ` · drafted by ${replyTo.draftModel}` : ""}
+                  {replyTo?.draftModel && !dirty ? ` · drafted by ${replyTo.draftModel}` : ""}
                 </span>
 
                 <div className="cx-actions">
-                  <button className="cx-btn-ghost" onClick={handleRedraft} disabled={pending || !canSendNow}>
+                  <button className="cx-btn-ghost" onClick={handleRedraft} disabled={pending || !canSendNow || !replyTo}>
                     redraft
                   </button>
-                  <button className="cx-btn-ghost" onClick={handleSave} disabled={pending || !dirty}>
+                  <button className="cx-btn-ghost" onClick={handleSave} disabled={pending || !dirty || !replyTo}>
                     save draft
                   </button>
                   <button
                     className="cx-btn-send"
                     onClick={handleSend}
-                    disabled={pending || !text.trim() || thread.optedOut || sent}
+                    disabled={pending || !text.trim() || thread.optedOut}
                   >
-                    {pending ? "sending…" : sent ? "sent" : "send to guest"}
+                    {pending ? "sending…" : "send to guest"}
                   </button>
                 </div>
               </div>
 
               {!canSendNow && (
                 <p className="cx-context-empty">
-                  Sending will tick the box in Airtable and the existing automation will deliver it.
-                  Set MERCURY_APP_KEY and CONCIERGE_OPS_SECRET here to send immediately and see the
-                  result on this screen.
+                  Sending is switched off here: set MERCURY_APP_KEY and CONCIERGE_OPS_SECRET on this
+                  app. Until then a reply can only go out by ticking Send on the row in Airtable.
                 </p>
               )}
             </>
