@@ -83,10 +83,17 @@ export function ThreadView({
   // Open on the newest message, not the oldest. The transcript is its own
   // scroller, so without this a thread that has run for weeks opens on a text
   // from a fortnight ago and the concierge answers the wrong thing.
+  //
+  // `hasClock` in the deps is load-bearing: the day dividers only render once
+  // `now` is set, which happens in an effect AFTER this one. Pinning before they
+  // exist leaves the pane short by their height, and the newest text sits half
+  // cut against the composer. It flips false→true exactly once, so this re-pins
+  // once and never fights a concierge who has scrolled up to read back.
+  const hasClock = now !== null;
   useEffect(() => {
     const el = transcriptRef.current;
     if (el) el.scrollTop = el.scrollHeight;
-  }, [messages.length]);
+  }, [messages.length, hasClock]);
 
   useEffect(() => {
     const id = setInterval(() => {
@@ -110,6 +117,7 @@ export function ThreadView({
     [replyTo?.draftUnresolved],
   );
 
+  const heading = thread.guestName ?? thread.title;
   const waited = now && thread.lastMessageAt && thread.awaitingReply ? waitedFor(thread.lastMessageAt, now) : null;
   const tooLong = text.trim().length > SOFT_LIMIT;
 
@@ -168,8 +176,17 @@ export function ThreadView({
       {/* ── left: who, and what they are in the middle of ─────────────── */}
       <aside className="cx-aside">
         <div className="cx-guest">
-          <h1 className="cx-guest-name">{thread.guestName ?? thread.title}</h1>
-          {thread.phone && <a href={`tel:${thread.phone}`} className="cx-guest-phone">{thread.phone}</a>}
+          {/* `thread.title` falls back to the phone number, so on an unnamed guest
+              the heading IS the number and the line under it was printing the
+              same string twice, which reads as a rendering fault. Drop the second
+              line in that case but move the tel: link up onto the heading: an
+              unnamed guest is the one a concierge most wants to be able to ring. */}
+          <h1 className="cx-guest-name">
+            {thread.phone === heading ? <a href={`tel:${thread.phone}`}>{heading}</a> : heading}
+          </h1>
+          {thread.phone && thread.phone !== heading && (
+            <a href={`tel:${thread.phone}`} className="cx-guest-phone">{thread.phone}</a>
+          )}
           <div className="cx-guest-tags">
             {thread.status && <span className="cx-tag">{thread.status}</span>}
             {thread.optedOut && <span className="cx-tag cx-tag-stop">opted out of SMS</span>}
@@ -308,6 +325,10 @@ export function ThreadView({
 
 function Bubble({ message }: { message: ConciergeMessage }) {
   const mine = message.direction === "Outbound";
+  // Delivery is a fact about a text we sent. `Status` on an INBOUND row tracks
+  // our own handling of it (Drafting, Draft Ready, Sent…), so this was rendering
+  // "SENT" back at the concierge on the guest's own incoming message.
+  const pill = mine && showsPill(message.status) ? message.status : null;
   return (
     <div className={`cx-bubble-row${mine ? " cx-bubble-mine" : ""}`}>
       <div className="cx-bubble">
@@ -318,9 +339,7 @@ function Bubble({ message }: { message: ConciergeMessage }) {
         <span className="cx-bubble-meta">
           {clockOf(message.sentAt ?? message.createdTime)}
           {message.channel && message.channel !== "SMS" ? ` · ${message.channel}` : ""}
-          {showsPill(message.status) ? (
-            <span className={`cx-pill ${statusTone(message.status)}`}>{message.status}</span>
-          ) : null}
+          {pill ? <span className={`cx-pill ${statusTone(pill)}`}>{pill}</span> : null}
         </span>
       </div>
     </div>

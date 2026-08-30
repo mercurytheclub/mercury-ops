@@ -3,6 +3,19 @@
 
 * { box-sizing: border-box; }
 
+/* One masthead geometry for every ops surface. The account button is
+   `position: fixed`, so it cannot measure the wordmark it is meant to sit
+   beside — it derives its offset from these two numbers instead. They were
+   previously written out only inside .account, and the thread page then set its
+   own top inset without knowing about them, which is how the logo and the
+   button ended up ~20px apart on that page alone. A surface that wants the
+   wordmark somewhere else moves --ops-mast-top; it must not hard-code a
+   second number. */
+:root {
+  --ops-mast-top: 6vh;
+  --ops-mast-logo: clamp(18px, 5.5vw, 30px); /* mirrors <Wordmark size={30} /> */
+}
+
 html, body {
   margin: 0;
   padding: 0;
@@ -38,11 +51,11 @@ a { color: var(--mercury-blue); text-decoration: none; }
 /* ─── Account (top-right SSO menu) ─────────────────────────────────────── */
 .account {
   position: fixed;
-  /* Logo stays in its original spot (6vh); the icon drops to meet it. The
-     wordmark sits at 6vh and is clamp(18px,5.5vw,30px) tall (mirrors
-     Wordmark size=30); half that minus half the 36px trigger lands the
-     icon's center on the logo's center, at any viewport size. */
-  top: calc(6vh + clamp(18px, 5.5vw, 30px) / 2 - 18px);
+  /* The icon drops to meet the logo: half the logo's height minus half the
+     36px trigger lands the icon's centre on the logo's centre, at any viewport
+     size. Both numbers come from :root so a page cannot move the wordmark out
+     from under this button without moving the button too. */
+  top: calc(var(--ops-mast-top) + var(--ops-mast-logo) / 2 - 18px);
   right: 1.5rem;
   z-index: 50;
   animation: account-fade 0.4s ease both;
@@ -762,7 +775,11 @@ select.bk-input option { background: #0c0c0c; color: var(--mercury-white); }
    transcript claiming a fixed 56vh and pushing the composer off the bottom. */
 .cx-page {
   height: 100vh;
-  padding: 4vh 4vw 3vh;
+  /* Top inset lives on the header, as --ops-mast-top, so the wordmark lands
+     where the fixed account button expects it. A page-level padding-top here
+     put the logo at 4vh while the button stayed at 6vh, and the two read as
+     crooked no matter how well the header itself was centred. */
+  padding: 0 4vw 3vh;
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
@@ -781,6 +798,7 @@ select.bk-input option { background: #0c0c0c; color: var(--mercury-white); }
   width: 100%;
   max-width: 78rem;   /* same as .cx-thread, so the header lines up with the columns under it */
   margin: 0 auto;
+  padding-top: var(--ops-mast-top);
   padding-bottom: 0.5rem;
 }
 .cx-back { justify-self: start; white-space: nowrap; opacity: 0.5; color: var(--mercury-white); }
@@ -801,6 +819,10 @@ select.bk-input option { background: #0c0c0c; color: var(--mercury-white); }
 .cx-aside { display: flex; flex-direction: column; gap: 1.4rem; overflow-y: auto; min-height: 0; padding-right: 0.5rem; }
 .cx-guest { display: flex; flex-direction: column; gap: 0.4rem; }
 .cx-guest-name { font-size: 1.5rem; font-weight: 400; margin: 0; line-height: 1.2; }
+/* The heading is a tel: link when the guest has no name on file. It stays white
+   like a heading rather than turning into cyan link text. */
+.cx-guest-name a { color: inherit; }
+.cx-guest-name a:hover { color: var(--mercury-blue); }
 .cx-guest-phone { font-family: var(--font-mono), monospace; font-size: 0.85rem; opacity: 0.6; color: var(--mercury-white); }
 .cx-guest-phone:hover { color: var(--mercury-blue); opacity: 1; }
 .cx-guest-tags { display: flex; gap: 0.4rem; flex-wrap: wrap; padding-top: 0.2rem; }
@@ -815,6 +837,10 @@ select.bk-input option { background: #0c0c0c; color: var(--mercury-white); }
 }
 
 .cx-claim { display: flex; align-items: center; gap: 0.7rem; flex-wrap: wrap; padding-bottom: 0.2rem; }
+/* Every other ghost button sits in a right-aligned row where its side padding
+   is invisible. This one starts the aside's left edge, so that padding stood
+   "I'll take this one" 3px out from the guest name and the trip beneath it. */
+.cx-claim .cx-btn-ghost { padding-left: 0; }
 .cx-claim-who { color: var(--mercury-blue); text-transform: none; letter-spacing: 0.02em; }
 
 .cx-context { display: flex; flex-direction: column; gap: 0.5rem; border-top: 1px solid var(--mercury-rule); padding-top: 1.1rem; }
@@ -902,19 +928,12 @@ select.bk-input option { background: #0c0c0c; color: var(--mercury-white); }
   font-size: 0.66rem;
   opacity: 0.4;
 }
-.cx-bubble-mine /* Why a text did not arrive, on the bubble that did not arrive. Twilio reports
-   this seconds after the send, so without it the bubble looks like every other
-   one that worked. */
-.cx-bubble-error {
-  margin: 0;
-  font-size: 0.82rem;
-  line-height: 1.5;
-  color: var(--mercury-red);
-  border-left: 2px solid var(--mercury-red);
-  padding-left: 0.6rem;
-}
-
-.cx-bubble-meta { justify-content: flex-end; }
+/* Ours are right-aligned, theirs stay left. It has to be this compound
+   selector: a patch once dropped a second copy of the .cx-bubble-error block
+   INTO the middle of it, which split it into `.cx-bubble-mine .cx-bubble-error`
+   plus a bare `.cx-bubble-meta` — and the bare rule pushed the guest's own
+   incoming timestamps to the right as well. */
+.cx-bubble-mine .cx-bubble-meta { justify-content: flex-end; }
 
 .cx-pill {
   font-family: var(--font-mono), monospace;
@@ -940,6 +959,11 @@ select.bk-input option { background: #0c0c0c; color: var(--mercury-white); }
   flex: none;          /* the reply box is the point of the screen; it never gets squeezed */
   max-height: 58%;
   overflow-y: auto;
+  /* The transcript above reserves 0.5rem for its scrollbar. Taken here as a
+     MARGIN, not padding, so the composer's hairline moves with it and the two
+     rules line up; as padding the border would still have run 8px wider than
+     every daybreak rule above it. */
+  margin-right: 0.5rem;
 }
 
 .cx-waiting-banner { font-family: var(--font-mono), monospace; font-size: 0.72rem; opacity: 0.55; }
@@ -1020,7 +1044,7 @@ select.bk-input option { background: #0c0c0c; color: var(--mercury-white); }
 @media (max-width: 900px) {
   .cx-page { height: auto; min-height: 100vh; overflow: visible; }
   .cx-aside { overflow: visible; padding-right: 0; }
-  .cx-composer { max-height: none; overflow: visible; }
+  .cx-composer { max-height: none; overflow: visible; margin-right: 0; }
   .cx-page-head { grid-template-columns: auto 1fr; }
   .cx-page-head > :last-child { display: none; }
   .cx-thread { grid-template-columns: 1fr; gap: 2rem 0; }
