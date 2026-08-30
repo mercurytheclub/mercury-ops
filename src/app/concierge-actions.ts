@@ -12,10 +12,10 @@ import { revalidatePath } from "next/cache";
 import { auth, isAllowed } from "@/auth";
 import {
   claimThread,
+  composeMessage,
   redraft,
   saveDraft,
-  sendReply,
-  type SendResult,
+  type ComposeResult,
 } from "@/server/concierge";
 
 type Denied = { ok: false; error: string };
@@ -44,15 +44,21 @@ export async function saveDraftAction(input: {
   return res;
 }
 
-/** Send the reply to the guest. This is the one that texts a real person. */
-export async function sendReplyAction(input: {
+/**
+ * Send a message to the guest. This is the one that texts a real person.
+ *
+ * Addressed to the THREAD, not to a particular inbound message, so a concierge
+ * can follow up, correct themselves, or write first. The old shape allowed one
+ * reply per text the guest sent and then refused with "this one has already
+ * gone out".
+ */
+export async function sendMessageAction(input: {
   threadId: string;
-  messageId: string;
   text: string;
-}): Promise<SendResult> {
+}): Promise<ComposeResult> {
   const gate = await requireOps();
   if (!gate.ok) return gate;
-  const res = await sendReply(input.messageId, input.text);
+  const res = await composeMessage(input.threadId, input.text);
   revalidatePath(`/inbox/${input.threadId}`);
   revalidatePath("/inbox");
   return res;

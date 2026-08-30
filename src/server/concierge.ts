@@ -497,6 +497,10 @@ function explain(code: string): string {
   }
 }
 
+export type ComposeResult =
+  | { ok: true; sent: true }
+  | { ok: false; error: string };
+
 export type SendResult =
   | { ok: true; sent: true }
   /** Ticked in Airtable, but this app could not get a verdict — the deployed
@@ -569,6 +573,49 @@ export async function sendReply(messageId: string, text: string): Promise<SendRe
     await patchRecord(MESSAGES_TABLE_ID, messageId, { [M.send]: false });
   }
   return { ok: false, error: explain(verdict.error) };
+}
+
+/**
+ * Send a message to the thread. Not a reply to any particular text.
+ *
+ * The old path wrote the body onto an inbound row and ticked `Send`, which made
+ * a reply structurally one-per-guest-text: no follow-up, no correction, and no
+ * reaching a guest who had not written first. Ops need to say a second thing
+ * without the guest having to speak first, so an outbound message belongs to the
+ * thread.
+ */
+export async function composeMessage(threadId: string, text: string): Promise<ComposeResult> {
+  const body = text.trim();
+  if (!body) return { ok: false, error: "There is nothing to send. Write a message first." };
+  if (!serverConfigured()) {
+    return {
+      ok: false,
+      error: "Sending needs MERCURY_APP_KEY and CONCIERGE_OPS_SECRET set on this app.",
+    };
+  }
+  let res: Response;
+  try {
+    res = await fetch(`${SERVER_URL}/internal/concierge/message`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-mercury-key": APP_KEY ?? "",
+        "x-internal-secret": OPS_SECRET ?? "",
+      },
+      body: JSON.stringify({ threadId, body }),
+      cache: "no-store",
+    });
+  } catch {
+    // Unlike the checkbox path there is no Airtable automation standing behind
+    // this one, so an unreachable server means nothing was sent. Say exactly
+    // that rather than implying it might still arrive.
+    return { ok: false, error: "Could not reach the server, so nothing was sent. Try again." };
+  }
+  loadThreads.bust();
+  if (res.ok) return { ok: true, sent: true };
+  const payload = (await res.json().catch(() => ({}))) as { error?: string; detail?: string };
+  const code = typeof payload?.error === "string" ? payload.error : `http_${res.status}`;
+  return { ok: false, error: code === "send_failed" && payload.detail ? payload.detail : explain(code) };
 }
 
 /** Ask Claude for the draft again — the recovery path for a row stuck at
