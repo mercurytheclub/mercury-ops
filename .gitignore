@@ -1,4 +1,7 @@
 .DS_Store
+# macOS resource forks. ~40 of these sit untracked in this repo; without
+# the line a `git add -A` sweeps every one of them into a commit.
+._*
 node_modules/
 .next/
 out/
