@@ -12,7 +12,16 @@ import { waitedFor } from "@/lib/waited";
 const REFRESH_MS = 20_000;
 
 function initials(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
+  // A thread with no guest name falls back to the phone number, and taking the
+  // first character of that gives an avatar reading "+". Use the last two digits
+  // instead: it is the part of a number a person actually recognises, and it
+  // still tells two unknown numbers apart.
+  const letters = name.replace(/[^\p{L}]/gu, "");
+  if (!letters) {
+    const digits = name.replace(/\D/g, "");
+    return digits ? digits.slice(-2) : "?";
+  }
+  const parts = name.trim().split(/\s+/).filter((w) => /\p{L}/u.test(w));
   if (parts.length === 0) return "?";
   return (parts[0][0] + (parts.length > 1 ? parts[parts.length - 1][0] : "")).toUpperCase();
 }
