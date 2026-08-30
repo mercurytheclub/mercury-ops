@@ -20,7 +20,8 @@ export default async function ThreadPage({ params }: { params: Promise<{ threadI
         <a href="/inbox" className="cx-back label">
           back to inbox
         </a>
-        <Wordmark size={22} />
+        <Wordmark size={30} />
+        <span aria-hidden />
       </header>
 
       <ThreadView
