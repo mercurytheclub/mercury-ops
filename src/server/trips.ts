@@ -47,7 +47,15 @@ async function createGuest(name: string): Promise<string> {
   const res = await fetch(api(GUESTS_TABLE_ID), {
     method: "POST",
     headers: authHeaders,
-    body: JSON.stringify({ fields: { "Given Names": given, "Last Name": last } }),
+    // Anyone ops types in here is billed in USD. Members who join from abroad may
+    // pick something else, but they never arrive through this path.
+    body: JSON.stringify({
+      fields: {
+        "Given Names": given,
+        "Last Name": last,
+        "Preferred Currency": "USD",
+      },
+    }),
   });
   if (!res.ok) {
     throw new Error(`couldn't create guest "${name}" (Airtable ${res.status})`);
