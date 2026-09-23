@@ -30,6 +30,20 @@ import { opsPersonForSession } from "@/server/opsTeam";
 const N8N = "https://matthewbecker.app.n8n.cloud";
 const N8N_HOST = "matthewbecker.app.n8n.cloud";
 
+/**
+ * Proof to n8n that a request came through this route, so a form can refuse to render to anyone
+ * else and bounce them here instead.
+ *
+ * That bounce is how the old URLs get closed without hunting down every link to them. 42 of the
+ * form endpoints are not reachable from any Airtable field, and a couple of dozen are referenced
+ * by nothing findable at all — bookmarks, interface buttons, cards posted months ago. A form that
+ * 404s the moment it is gated breaks all of those silently. A form that redirects keeps every one
+ * of them working: the old link bounces through the login and arrives.
+ *
+ * Unlike the mcyfrm_ key this is never printed in a page, so it cannot be lifted off one.
+ */
+const PROXY_SECRET = process.env.OPS_PROXY_SECRET ?? "";
+
 // Only bodies we might have to rewrite are worth buffering as text.
 const TEXTUAL = /^(text\/|application\/(javascript|json|xhtml))/i;
 
@@ -84,6 +98,7 @@ async function proxy(req: Request, path: string[]) {
   // Who is asking, for anything upstream that wants to record it. Not a credential: the form
   // pages are still reachable directly, so nothing upstream may trust this to mean anything.
   if (person?.name) headers.set("x-ops-user", person.name);
+  if (PROXY_SECRET) headers.set("x-ops-proxy", PROXY_SECRET);
 
   const method = req.method.toUpperCase();
   const init: RequestInit = { method, headers, redirect: "manual" };
