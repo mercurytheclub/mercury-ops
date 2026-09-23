@@ -29,6 +29,25 @@ export function isAllowed(email: string | null | undefined): boolean {
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [Google],
   pages: { signIn: "/login" },
+  cookies: {
+    // SameSite=None so the session travels to /api/ops-identity when an n8n ops form asks it
+    // who is signed in. A Lax cookie is simply not sent on that request, which is why the
+    // route could only ever answer "nobody" before this.
+    //
+    // What this widens, stated plainly: the browser now attaches this cookie to cross-site
+    // requests to this app. Two things keep that from mattering. Reads are unreadable — no
+    // route sends CORS headers except /api/ops-identity, and that one only to the origins in
+    // OPS_IDENTITY_ORIGINS, so another site can cause a request but cannot see the answer.
+    // Writes go through Next Server Actions, which reject a POST whose Origin does not match
+    // the host. Neither is a reason to be careless with it.
+    //
+    // The name is pinned to the Auth.js default for secure cookies. Getting it wrong does not
+    // error — it silently signs out everybody who is currently signed in.
+    sessionToken: {
+      name: "__Secure-authjs.session-token",
+      options: { httpOnly: true, sameSite: "none", path: "/", secure: true },
+    },
+  },
   callbacks: {
     // Gate the OAuth sign-in itself: reject anyone not on the allowlist.
     signIn({ profile }) {
