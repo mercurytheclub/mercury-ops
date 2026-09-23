@@ -1,5 +1,5 @@
 import { auth } from "@/auth";
-import { opsPersonForEmail } from "@/server/opsTeam";
+import { opsPersonForSession } from "@/server/opsTeam";
 
 /**
  * Who is signed in, by the name the ops forms use.
@@ -12,10 +12,10 @@ import { opsPersonForEmail } from "@/server/opsTeam";
  * Returns `{ name: null }` rather than a 401 when nobody is signed in, because the caller is a
  * form that should quietly carry on letting the person pick by hand.
  *
- * Cross-origin note: the browser only sends the session cookie here if that cookie is
- * SameSite=None, which is a deliberate decision about this app's cookies, not something this
- * route can grant itself. Until it is made, this answers `{ name: null }` to the forms and the
- * dropdown falls back to the name remembered on the device. Nothing breaks either way.
+ * Cross-origin: the session cookie is SameSite=None so the browser sends it here (see auth.ts).
+ * A browser that blocks third-party cookies — Safari does by default — sends nothing regardless,
+ * and this answers `{ name: null }`; the form then falls back to the name remembered on the
+ * device, exactly as it did before. Nothing breaks either way.
  */
 
 const ALLOWED_ORIGINS = new Set(
@@ -48,7 +48,7 @@ export async function GET(req: Request) {
   };
   try {
     const session = await auth();
-    const person = await opsPersonForEmail(session?.user?.email);
+    const person = await opsPersonForSession(session?.user);
     return Response.json({ name: person?.name ?? null, teams: person?.teams ?? [] }, { headers });
   } catch {
     // A roster read that fails must not take a form down with it.
