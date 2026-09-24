@@ -49,9 +49,33 @@ export async function GET(req: Request) {
   try {
     const session = await auth();
     const person = await opsPersonForSession(session?.user);
-    return Response.json({ name: person?.name ?? null, teams: person?.teams ?? [] }, { headers });
-  } catch {
-    // A roster read that fails must not take a form down with it.
-    return Response.json({ name: null, teams: [] }, { headers });
+    if (person) {
+      return Response.json({ name: person.name, teams: person.teams, reason: "matched" }, { headers });
+    }
+    /* Say WHY there is no name, because the three reasons are indistinguishable from the form's
+     * side and all of them look like "the feature is broken".
+     *
+     * When somebody IS signed in and still does not match, echo back the account we saw. It is
+     * their own address going to their own browser — the thing kept off these pages is OTHER
+     * people's, which is why the roster endpoint still returns names only. Without it, working
+     * out why a form will not fill itself in means guessing at which Google account someone used.
+     */
+    if (!session?.user) {
+      return Response.json({ name: null, teams: [], reason: "not-signed-in" }, { headers });
+    }
+    return Response.json({
+      name: null, teams: [], reason: "signed-in-but-not-on-the-roster",
+      signedInAs: session.user.email ?? null,
+      googleName: session.user.name ?? null,
+      hint: "Add this address to Email on the 🧑 Ops Team row for this person, or make their "
+          + "Google display name start with the name the roster uses.",
+    }, { headers });
+  } catch (e) {
+    // A roster read that fails must not take a form down with it — but it must not look like
+    // "you are not on the roster" either, or somebody goes and edits Airtable for no reason.
+    return Response.json({
+      name: null, teams: [], reason: "roster-unavailable",
+      detail: e instanceof Error ? e.message.slice(0, 200) : null,
+    }, { headers });
   }
 }
