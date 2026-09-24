@@ -99,17 +99,33 @@ function rewrite(body: string) {
  * rather than a header: the page's own script can read it with no extra request, and a form
  * reached the old way simply does not find one and asks as it always did.
  */
-function stampUser(html: string, name: string | null) {
-  if (!name) return html;
-  const tag = `<meta name="mercury-ops-user" content="${name.replace(/[&<>"]/g, "")}">`;
+function stampUser(html: string, name: string | null, why: string) {
+  const clean = (v: string) => v.replace(/[&<>"]/g, "");
+  // The reason is stamped even when there is a name, because "it works on my form" and "it works
+  // for that person" are different questions and both get asked. Diagnosing this without it meant
+  // guessing from a screenshot at which of four things had gone wrong.
+  const tag = `<meta name="mercury-ops-user" content="${clean(name ?? "")}">`
+            + `<meta name="mercury-ops-why" content="${clean(why)}">`;
   const head = html.indexOf("<head>");
   if (head < 0) return html;
   return html.slice(0, head + 6) + tag + html.slice(head + 6);
 }
 
 async function proxy(req: Request, path: string[]) {
-  const session = await auth();
-  const person = await opsPersonForSession(session?.user).catch(() => null);
+  let why = "matched";
+  let whoAmI: string | null = null;
+  try {
+    const session = await auth();
+    if (!session?.user) {
+      why = "no-session-in-proxy";
+    } else {
+      const person = await opsPersonForSession(session.user);
+      if (person) whoAmI = person.name;
+      else why = "signed-in-but-not-on-the-roster";
+    }
+  } catch (e) {
+    why = "lookup-threw: " + (e instanceof Error ? e.message.slice(0, 80) : "unknown");
+  }
 
   const search = new URL(req.url).search;
   const headers = new Headers();
@@ -118,7 +134,7 @@ async function proxy(req: Request, path: string[]) {
   headers.set("accept", req.headers.get("accept") ?? "*/*");
   // Who is asking, for anything upstream that wants to record it. Not a credential: the form
   // pages are still reachable directly, so nothing upstream may trust this to mean anything.
-  if (person?.name) headers.set("x-ops-user", person.name);
+  if (whoAmI) headers.set("x-ops-user", whoAmI);
   if (PROXY_SECRET) headers.set("x-ops-proxy", PROXY_SECRET);
 
   const method = req.method.toUpperCase();
@@ -151,7 +167,7 @@ async function proxy(req: Request, path: string[]) {
   }
 
   let body = rewrite(await res.text());
-  if (/^text\/html/i.test(type)) body = stampUser(body, person?.name ?? null);
+  if (/^text\/html/i.test(type)) body = stampUser(body, whoAmI, why);
   return new Response(body, { status: res.status, headers: out });
 }
 
