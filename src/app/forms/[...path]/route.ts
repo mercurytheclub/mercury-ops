@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
 import { opsPersonForSession } from "@/server/opsTeam";
+import { replaceWhoField } from "@/lib/opsWhoField";
 
 /**
  * The ops forms, behind the sign-in that already guards this app.
@@ -95,9 +96,9 @@ function rewrite(body: string) {
 }
 
 /**
- * Tell the page who opened it, so it can say "logged by Rick" instead of asking. A meta tag
- * rather than a header: the page's own script can read it with no extra request, and a form
- * reached the old way simply does not find one and asks as it always did.
+ * Tell the page who opened it. The tag is what the page's own script reads; it is kept even now
+ * that the field is taken out server-side, because a form this cannot confidently edit falls
+ * back to the script, and the script falls back to asking.
  */
 function stampUser(html: string, name: string | null, why: string) {
   const clean = (v: string) => v.replace(/[&<>"]/g, "");
@@ -167,7 +168,19 @@ async function proxy(req: Request, path: string[]) {
   }
 
   let body = rewrite(await res.text());
-  if (/^text\/html/i.test(type)) body = stampUser(body, whoAmI, why);
+  if (/^text\/html/i.test(type)) {
+    body = stampUser(body, whoAmI, why);
+    /* Take the "who is filling this in" field out altogether. The person signed in to get here,
+     * so the question is already answered; a hidden input of the same name carries it, which is
+     * why no submit workflow had to change. A field this cannot take apart cleanly is left
+     * alone and the form simply still asks. */
+    if (whoAmI) {
+      const cut = replaceWhoField(body, whoAmI);
+      body = cut.html;
+      if (cut.skipped) out.set("x-ops-who-skipped", String(cut.skipped));
+      out.set("x-ops-who-removed", String(cut.replaced));
+    }
+  }
   return new Response(body, { status: res.status, headers: out });
 }
 
