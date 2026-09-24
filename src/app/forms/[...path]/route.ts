@@ -53,6 +53,27 @@ const DROP_UPSTREAM = new Set([
   "content-encoding", "content-length", "transfer-encoding", "connection", "keep-alive",
 ]);
 
+/**
+ * n8n answers every webhook with `Content-Security-Policy: sandbox …` and no `allow-same-origin`.
+ * Copied onto this origin it puts the form in an opaque origin, where localStorage throws and a
+ * same-origin fetch is treated as cross-origin from a null origin. That silently kills both ways
+ * the form has of learning who is filling it in — the remembered name and /api/ops-identity —
+ * and it is why the first gated form still asked, despite the lookup working.
+ *
+ * The sandbox is kept, because the page is still HTML this app did not write; it is only allowed
+ * to be its own origin. Everything else n8n asked for stays.
+ */
+function sameOriginSandbox(csp: string): string {
+  return csp
+    .split(";")
+    .map((directive) => {
+      const d = directive.trim();
+      if (!/^sandbox\b/i.test(d) || /\ballow-same-origin\b/i.test(d)) return directive;
+      return `${d} allow-same-origin`;
+    })
+    .join(";");
+}
+
 function upstreamUrl(path: string[], search: string) {
   const suffix = path.map(encodeURIComponent).join("/");
   return `${N8N}/webhook/${suffix}${search}`;
@@ -117,7 +138,9 @@ async function proxy(req: Request, path: string[]) {
 
   const out = new Headers();
   res.headers.forEach((v, k) => {
-    if (!DROP_UPSTREAM.has(k.toLowerCase())) out.set(k, v);
+    const key = k.toLowerCase();
+    if (DROP_UPSTREAM.has(key)) return;
+    out.set(k, key === "content-security-policy" ? sameOriginSandbox(v) : v);
   });
   out.set("cache-control", "no-store, private");
 
