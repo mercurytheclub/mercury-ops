@@ -1,5 +1,6 @@
 import { auth, signIn } from "@/auth";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { Wordmark } from "@/app/components/Wordmark";
 import { color } from "@brand";
 
@@ -16,14 +17,42 @@ function GoogleMark() {
   );
 }
 
+/**
+ * Where to send someone once they are in.
+ *
+ * An ops form reached from an old link bounces through here, so "/" is the wrong answer — it
+ * drops them on the trips list having forgotten what they clicked. The middleware puts the
+ * original URL in callbackUrl; this honours it.
+ *
+ * Only our own host, and only ever as a path. Handing an unchecked callbackUrl to signIn would
+ * make this page an open redirect: anyone could send a Mercury address a link that signs them in
+ * and lands them somewhere else entirely, which is a decent phishing primitive.
+ */
+async function safeNext(raw: string | undefined): Promise<string> {
+  if (!raw) return "/";
+  // "//host" is protocol-relative, and "/\host" is too once a browser normalises the backslash.
+  // Both leave our origin while looking like a path.
+  if (/^[/\\]{2}/.test(raw)) return "/";
+  if (raw.startsWith("/")) return raw;
+  try {
+    const target = new URL(raw);
+    const host = (await headers()).get("host");
+    if (host && target.host === host) return target.pathname + target.search;
+  } catch {
+    /* not a URL at all */
+  }
+  return "/";
+}
+
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; callbackUrl?: string }>;
 }) {
+  const { error, callbackUrl } = await searchParams;
+  const next = await safeNext(callbackUrl);
   const session = await auth();
-  if (session?.user) redirect("/");
-  const { error } = await searchParams;
+  if (session?.user) redirect(next);
 
   return (
     <main
@@ -46,7 +75,7 @@ export default async function LoginPage({
       <form
         action={async () => {
           "use server";
-          await signIn("google", { redirectTo: "/" });
+          await signIn("google", { redirectTo: next });
         }}
       >
         <button type="submit" className="login-btn">
