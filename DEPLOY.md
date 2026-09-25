@@ -1,6 +1,29 @@
 # Deploying mercury-ops (Vercel)
 
-The app is a standard Next.js App Router project — Vercel auto-detects it (build `next build`, output handled automatically). The only non-default pieces are the **brand git submodule** and the **Airtable token**. Follow these once; after that, every push to `main` auto-deploys.
+The app is a standard Next.js App Router project — Vercel auto-detects it (build `next build`, output handled automatically). The only non-default pieces are the **brand git submodule** and the **Airtable token**.
+
+## ⚠️ Pushing to `main` does NOT deploy
+
+This file used to end the line above with "every push to `main` auto-deploys". It does not, and
+has not: every production deployment in the project's history was made from the CLI. Merging a PR
+and walking away leaves the change **merged and not live**, with nothing anywhere saying so — a
+security fix sat merged and unshipped for 15 minutes this way before anyone noticed (TK1220).
+There is no GitHub deployment record and no commit status to check, because no Git integration is
+posting one.
+
+After merging, deploy by hand from a checkout of `main`:
+
+```bash
+cd mercury-ops
+git checkout main && git pull        # deploy what is MERGED, not what you happen to have open
+npx vercel --prod --yes              # ~30s; prints the deployment URL
+npx vercel ls                        # newest row should read Ready / Production
+```
+
+**`vercel --prod` uploads this WORKING DIRECTORY, not the commit.** Anything you have open and
+unsaved-to-git goes live with it, and anything on `main` you have not pulled does not. Check
+`git status` and `git log origin/main -3` before you run it. Then curl something real — a `200`
+from the home page only proves the old build is still up.
 
 ## One-time setup
 
