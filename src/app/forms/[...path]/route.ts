@@ -92,7 +92,27 @@ function rewrite(body: string) {
   return body
     .split(`https://${N8N_HOST}/webhook`).join("/forms")
     .split(`http://${N8N_HOST}/webhook`).join("/forms")
-    .split(`//${N8N_HOST}/webhook`).join("/forms");
+    .split(`//${N8N_HOST}/webhook`).join("/forms")
+    // And the ROOT-RELATIVE spelling, which is the one that actually broke.
+    //
+    // A form page written on n8n can say `fetch("/webhook/hotel-complete-info-submit?k=…")`
+    // and be perfectly correct: served from n8n's own origin that resolves to the submit
+    // webhook. Served from here the same string resolves to mercury-ops.vercel.app/webhook/…,
+    // which is not a route in this app, so Next answers its own 404 page — and the form,
+    // which does `document.write(response)`, paints that 404 over itself. The form LOADS
+    // fine and dies the moment you save, which is why it read as "Mercury is down" rather
+    // than as a link pointing at the wrong host.
+    //
+    // The three rules above only ever looked for the absolute spellings, so a page that had
+    // never named the host had nothing for them to catch and sailed through untouched.
+    // Eight gated forms were submitting into this hole (TK1247).
+    //
+    // Nothing is lost by being broad here: there is no /webhook route on this origin, so
+    // every root-relative /webhook/… in a proxied page is already a 404. The lookbehind only
+    // keeps us off paths that merely END in /webhook/ — another host's absolute URL, or a
+    // longer path — since those are not ours to move. `/webhook-test/` has no second slash
+    // to match, and the bare `"/webhook"` some pages use as a mount prefix is left alone.
+    .replace(/(?<![A-Za-z0-9._\-/])\/webhook\//g, "/forms/");
 }
 
 /**
